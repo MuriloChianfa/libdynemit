@@ -6,7 +6,7 @@
 
 > **High-performance C23 library for runtime CPU feature detection and automatic SIMD dispatch**
 
-Write once, run optimally everywhere. **libdynemit** automatically selects the best SIMD implementation for your CPU at program startup—achieving **up to 16× speedup** with zero runtime overhead.
+Write once, run optimally everywhere. **libdynemit** automatically selects the best SIMD implementation for your CPU at program startup, achieving **up to 16× speedup** with zero runtime overhead depending on the feature implementation.
 
 ## Performance First
 
@@ -30,25 +30,11 @@ vector_mul_f32(a, b, result, n);
 ## Quick Start
 
 ```bash
-# Clone and build
 git clone https://github.com/murilo/libdynemit.git
 cd libdynemit
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make
-
-# Run benchmark to see the magic
-./bench/benchmark_vector_mul
-```
-
-**Example output:**
-```
-Detected SIMD level: AVX2
-n = 1048576, iters = 2000
-elapsed = 4.129774 s
-throughput ~= 6.09 GB/s
-GFLOP/s   ~= 0.51
-correctness check: OK ✓
 ```
 
 ## Project Structure
