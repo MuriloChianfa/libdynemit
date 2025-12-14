@@ -1,34 +1,55 @@
 # libdynemit
 
-A high-performance C23 library demonstrating runtime CPU feature detection and dynamic dispatch to optimal SIMD implementations for vector operations.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![C23](https://img.shields.io/badge/std-C23-blue.svg)](https://en.cppreference.com/w/c/23)
+[![GCC 13+](https://img.shields.io/badge/GCC-13%2B-green.svg)](https://gcc.gnu.org/)
 
-## Overview
+> **High-performance C23 library for runtime CPU feature detection and automatic SIMD dispatch**
 
-This project showcases how to write **portable, performance-critical code** in **C23** that automatically selects the best SIMD instruction set available on the host CPU at runtime. It implements vectorized floating-point operations with multiple SIMD backends:
+Write once, run optimally everywhere. **libdynemit** automatically selects the best SIMD implementation for your CPU at program startup—achieving **up to 16× speedup** with zero runtime overhead.
 
-**Available Operations:**
-- Vector addition (`vector_add_f32`)
-- Vector multiplication (`vector_mul_f32`)
-- Vector subtraction (`vector_sub_f32`)
+## Performance First
 
-**SIMD Backends:**
-- **AVX-512F** (512-bit ZMM registers, 16 floats per operation)
-- **AVX2** (256-bit YMM registers, 8 floats per operation)
-- **AVX** (256-bit YMM registers, 8 floats per operation)
-- **SSE4.2** (128-bit XMM registers, 4 floats per operation)
-- **SSE2** (128-bit XMM registers, 4 floats per operation)
-- **Scalar** (fallback, no SIMD)
+```c
+#include <dynemit.h>
 
-The library uses **GCC's indirect function (ifunc)** mechanism to resolve the optimal implementation at program startup, ensuring zero runtime overhead after initialization.
+// Automatically uses AVX-512, AVX2, AVX, SSE4.2, SSE2, or scalar
+// based on your CPU's capabilities—decided once at program load
+vector_mul_f32(a, b, result, n);
+```
 
-## Features
+## Why libdynemit?
 
-- **Zero runtime overhead** - Function dispatch happens once at program load time
-- **Automatic CPU detection** - Uses CPUID and XGETBV to detect available SIMD features
-- **Multiple SIMD backends** - Supports SSE2 through AVX-512F
-- **Portable fallback** - Scalar implementation for non-x86 architectures
-- **Clean architecture** - Well-organized source structure with CMake build system
-- **Verification tools** - Included script to verify SIMD instruction usage
+| Feature | Benefit |
+|---------|---------|
+| **Zero Runtime Overhead** | Dispatch happens once at program load using GCC's `ifunc` |
+| **Automatic Detection** | CPUID & XGETBV intrinsics detect CPU capabilities |
+| **Modular** | Link only what you need—core + individual features |
+| **Modern C23** | Clean, type-safe code using latest C standard |
+
+## Quick Start
+
+```bash
+# Clone and build
+git clone https://github.com/murilo/libdynemit.git
+cd libdynemit
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make
+
+# Run benchmark to see the magic
+./bench/benchmark_vector_mul
+```
+
+**Example output:**
+```
+Detected SIMD level: AVX2
+n = 1048576, iters = 2000
+elapsed = 4.129774 s
+throughput ~= 6.09 GB/s
+GFLOP/s   ~= 0.51
+correctness check: OK ✓
+```
 
 ## Project Structure
 
@@ -93,7 +114,8 @@ make
 ./bench/benchmark_vector_mul
 ```
 
-### Build Options
+<details>
+<summary><b>Build Options</b></summary>
 
 ```bash
 # Debug build
@@ -106,7 +128,10 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake .. -DLIST_FEATURES=ON
 ```
 
-### Running Tests
+</details>
+
+<details>
+<summary><b>Running Tests</b></summary>
 
 ```bash
 # Build and run tests
@@ -117,6 +142,8 @@ ctest --verbose
 # Or run individual test
 ./tests/test_features
 ```
+
+</details>
 
 ## Usage
 
@@ -138,7 +165,8 @@ GFLOP/s   ~= 0.51
 correctness check: OK (first 16 elements)
 ```
 
-### Verifying SIMD Instructions
+<details>
+<summary><b>Verifying SIMD Instructions</b></summary>
 
 Use the included verification script to inspect which SIMD instructions were compiled into the binary:
 
@@ -151,7 +179,10 @@ This will show:
 - Actual SIMD instructions used in each implementation
 - The ifunc resolver function that performs runtime dispatch
 
-## How It Works
+</details>
+
+<details>
+<summary><b>How It Works</b> (Technical Details)</summary>
 
 ### 1. CPU Feature Detection
 
@@ -197,7 +228,10 @@ void vector_mul_f32(const float *, const float *, float *, size_t)
 
 This happens **once** at program load time, making subsequent calls as fast as direct function calls.
 
-## Performance Considerations
+</details>
+
+<details>
+<summary><b>Performance Considerations</b></summary>
 
 - **Alignment**: The benchmark uses 64-byte aligned buffers for optimal memory access
 - **Loop unrolling**: Each SIMD implementation processes multiple elements per iteration
@@ -213,33 +247,41 @@ Compared to scalar code, approximate speedups:
 
 Actual performance depends on memory bandwidth, CPU architecture, and data access patterns.
 
+</details>
+
 ## Installation
 
 ```bash
 # Install library and headers
 cd build
 sudo make install
-
-# Installed files:
-# Libraries (6 options available):
-#   - /usr/local/lib/libdynemit.a (all-in-one, includes all features)
-#   - /usr/local/lib/libdynemit_core.a (just CPU detection)
-#   - /usr/local/lib/libdynemit_vector_add.a (single feature)
-#   - /usr/local/lib/libdynemit_vector_mul.a (single feature)
-#   ... and more
-# Headers:
-#   - /usr/local/include/dynemit.h (umbrella header)
-#   - /usr/local/include/dynemit/core.h
-#   - /usr/local/include/dynemit/vector_add.h
-#   - /usr/local/include/dynemit/vector_mul.h
-#   ... and more
 ```
+
+<details>
+<summary>View installed files</summary>
+
+**Libraries** (6 options available):
+- `/usr/local/lib/libdynemit.a` (all-in-one, includes all features)
+- `/usr/local/lib/libdynemit_core.a` (just CPU detection)
+- `/usr/local/lib/libdynemit_vector_add.a` (single feature)
+- `/usr/local/lib/libdynemit_vector_mul.a` (single feature)
+- ... and more
+
+**Headers:**
+- `/usr/local/include/dynemit.h` (umbrella header)
+- `/usr/local/include/dynemit/core.h`
+- `/usr/local/include/dynemit/vector_add.h`
+- `/usr/local/include/dynemit/vector_mul.h`
+- ... and more
+
+</details>
 
 ## Library Usage Options
 
 The library provides flexible usage options depending on your needs:
 
-### Option 1: All-in-One Library (Recommended for Simplicity)
+<details open>
+<summary><b>Option 1: All-in-One Library</b> (Recommended for Simplicity)</summary>
 
 Use the bundled library that includes all features:
 
@@ -272,7 +314,10 @@ Compile and link:
 gcc -O3 myprogram.c -ldynemit -lm -o myprogram
 ```
 
-### Option 2: Modular Libraries (For Minimal Binary Size)
+</details>
+
+<details>
+<summary><b>Option 2: Modular Libraries</b> (For Minimal Binary Size)</summary>
 
 Include only the features you need:
 
@@ -297,7 +342,10 @@ Compile and link:
 gcc -O3 myprogram.c -ldynemit_core -ldynemit_vector_add -ldynemit_vector_mul -lm -o myprogram
 ```
 
-### Option 3: Core Only
+</details>
+
+<details>
+<summary><b>Option 3: Core Only</b></summary>
 
 If you only need CPU detection:
 
@@ -315,6 +363,8 @@ Compile and link:
 ```bash
 gcc -O3 myprogram.c -ldynemit_core -lm -o myprogram
 ```
+
+</details>
 
 ## Technical Details
 
