@@ -1,14 +1,3 @@
-// benchmark_vector_mul.c
-// build:
-//   gcc -O3 vector_mul.c dynemit.c benchmark_vector_mul.c -o benchmark_vector_mul
-// run:
-//   ./benchmark_vector_mul
-//
-// This will:
-// 1. detect CPU SIMD level
-// 2. say "expected impl: AVX2" (for example)
-// 3. run a small benchmark
-
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>

@@ -98,6 +98,39 @@ libdynemit/
 - **CMake** 3.16 or higher
 - **x86_64 architecture** (for SIMD optimizations)
 
+### Installing Dependencies
+
+**Ubuntu/Debian:**
+```bash
+# Update package list
+sudo apt update
+
+# Install GCC 13+ and CMake
+sudo apt install -y gcc-13 cmake
+
+# Set GCC 13 as default (optional)
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100
+
+# Verify installation
+gcc --version
+cmake --version
+```
+
+<details>
+<summary>Other distributions</summary>
+
+**Fedora/RHEL:**
+```bash
+sudo dnf install -y gcc cmake
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S gcc cmake
+```
+
+</details>
+
 ### Build Instructions
 
 ```bash

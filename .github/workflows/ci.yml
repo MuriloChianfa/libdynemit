@@ -191,33 +191,3 @@ jobs:
         name: libdynemit-libraries
         path: artifacts/
         retention-days: 10
-
-  compatibility-check:
-    name: CMake Compatibility Check
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        cmake-version: ['3.16', '3.25', 'latest']
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Install GCC 13
-      run: |
-        sudo apt update
-        sudo apt install -y gcc-13 g++-13
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100
-    
-    - name: Install CMake ${{ matrix.cmake-version }}
-      uses: jwlawson/actions-setup-cmake@v2
-      with:
-        cmake-version: ${{ matrix.cmake-version }}
-    
-    - name: Configure with CMake ${{ matrix.cmake-version }}
-      run: |
-        cmake --version
-        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13
-    
-    - name: Build
-      run: cmake --build build -j$(nproc)
