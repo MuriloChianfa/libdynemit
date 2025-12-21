@@ -24,7 +24,7 @@ vector_mul_f32(a, b, result, n);
 |---------|---------|
 | **Zero Runtime Overhead** | Dispatch happens once at program load using GCC's `ifunc` |
 | **Automatic Detection** | CPUID & XGETBV intrinsics detect CPU capabilities |
-| **Modular** | Link only what you need—core + individual features |
+| **Modular** | Link only what you need: core and/or individual features |
 | **Modern C23** | Clean, type-safe code using latest C standard |
 
 ## Quick Start
