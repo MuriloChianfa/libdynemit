@@ -198,24 +198,6 @@ gcc -O3 myprogram.c -ldynemit_core -lm -o myprogram
 
 ## Development
 
-### Running the Benchmark
-
-The benchmark program detects your CPU's SIMD capabilities and runs a performance test:
-
-```bash
-./build/bench/benchmark_vector_mul
-```
-
-Example output:
-```
-Detected SIMD level: AVX
-n = 1048576, iters = 2000
-elapsed = 4.129774 s
-throughput ~= 6.09 GB/s (counting a+b+out)
-GFLOP/s   ~= 0.51
-correctness check: OK (first 16 elements)
-```
-
 ### How It Works (Technical Details)
 
 ### 1. CPU Feature Detection
@@ -349,6 +331,27 @@ ctest --verbose
 
 # Or run individual test
 ./tests/test_features
+```
+
+</details>
+
+<details>
+<summary><b>Running Benchmarks</b></summary>
+
+The benchmark program detects your CPU's SIMD capabilities and runs a performance test:
+
+```bash
+./build/bench/benchmark_vector_mul
+```
+
+Example output:
+```
+Detected SIMD level: AVX
+n = 1048576, iters = 2000
+elapsed = 4.129774 s
+throughput ~= 6.09 GB/s (counting a+b+out)
+GFLOP/s   ~= 0.51
+correctness check: OK (first 16 elements)
 ```
 
 </details>
