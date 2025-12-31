@@ -1,92 +1,33 @@
-# libdynemit
+<center>
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+libdynemit
+
 [![C23](https://img.shields.io/badge/std-C23-blue.svg)](https://en.cppreference.com/w/c/23)
-[![GCC 13+](https://img.shields.io/badge/GCC-13%2B-green.svg)](https://gcc.gnu.org/)
+[![CMake](https://img.shields.io/badge/CMake-3.16+-green.svg)](https://cmake.org/)
+[![GCC](https://img.shields.io/badge/GCC-13%2B-green.svg)](https://gcc.gnu.org/)
+[![License: Boost](https://img.shields.io/badge/License-Boost_1.0-lightblue.svg)](https://www.boost.org/LICENSE_1_0.txt)
 
-> **High-performance C23 library for runtime CPU feature detection and automatic SIMD dispatch**
+> **Write once, run efficiently everywhere without pain.**
 
-Write once, run optimally everywhere. **libdynemit** automatically selects the best SIMD implementation for your CPU at program startup, achieving **up to 16× speedup** with zero runtime overhead depending on the feature implementation.
+libdynemit leverages GCC's ifunc resolver to automatically select optimal SIMD implementations at program startup, delivering portable code without sacrificing performance.
 
-## Performance First
+</center>
+
+## Example
 
 ```c
 #include <dynemit.h>
 
-// Automatically uses AVX-512, AVX2, AVX, SSE4.2, SSE2, or scalar
-// based on your CPU's capabilities—decided once at program load
+// Automatically uses AVX-512, AVX2, AVX, SSE4.2, SSE2 or scalar,
+// based on your CPU's capabilities, decided once at program startup
 vector_mul_f32(a, b, result, n);
 ```
 
-## Why libdynemit?
+## Requirements
 
-| Feature | Benefit |
-|---------|---------|
-| **Zero Runtime Overhead** | Dispatch happens once at program load using GCC's `ifunc` |
-| **Automatic Detection** | CPUID & XGETBV intrinsics detect CPU capabilities |
-| **Modular** | Link only what you need: core and/or individual features |
-| **Modern C23** | Clean, type-safe code using latest C standard |
+<details open>
+<summary>Ubuntu/Debian</summary>
 
-## Quick Start
-
-```bash
-git clone https://github.com/murilo/libdynemit.git
-cd libdynemit
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make
-```
-
-## Project Structure
-
-```
-libdynemit/
-├── CMakeLists.txt          # Main CMake configuration
-├── include/
-│   ├── dynemit.h           # Umbrella header (includes all features)
-│   └── dynemit/
-│       ├── core.h          # CPU detection API
-│       ├── vector_add.h    # Vector addition feature
-│       ├── vector_mul.h    # Vector multiplication feature
-│       └── ... and more
-├── src/
-│   ├── CMakeLists.txt      # Core library build config
-│   ├── dynemit.c           # CPU feature detection implementation
-│   └── dynemit_features.c  # Feature list for all-in-one library
-├── features/
-│   ├── vector_add/
-│   │   ├── CMakeLists.txt
-│   │   └── vector_add.c    # SIMD add implementations
-│   ├── vector_mul/
-│   │   ├── CMakeLists.txt
-│   │   └── vector_mul.c    # SIMD multiply implementations
-│   └── ... and more
-├── bench/
-│   ├── CMakeLists.txt      # Benchmark CMake config
-│   └── benchmark_vector_mul.c  # Benchmark program
-├── tests/
-│   ├── CMakeLists.txt      # Tests CMake config
-│   ├── test_features.c     # Feature discovery test
-│   └── test_vector_ops.c   # Vector operations correctness test
-├── docs/
-│   ├── ADDING_FEATURES.md  # Guide for adding new features
-│   └── ARCHITECTURE.md     # Internal architecture documentation
-├── scripts/
-│   └── check_for_simd.sh   # Verify SIMD instructions in binary
-└── README.md
-```
-
-## Building
-
-### Requirements
-
-- **GCC 13+** (required for C23 support, ifunc, and SIMD intrinsics)
-- **CMake** 3.16 or higher
-- **x86_64 architecture** (for SIMD optimizations)
-
-### Installing Dependencies
-
-**Ubuntu/Debian:**
 ```bash
 # Update package list
 sudo apt update
@@ -102,69 +43,160 @@ gcc --version
 cmake --version
 ```
 
-<details>
-<summary>Other distributions</summary>
+</details>
 
-**Fedora/RHEL:**
+<details>
+<summary>Fedora/RHEL</summary>
+
 ```bash
 sudo dnf install -y gcc cmake
 ```
 
-**Arch Linux:**
+</details>
+
+
+<details>
+<summary>Arch Linux</summary>
+
 ```bash
 sudo pacman -S gcc cmake
 ```
 
 </details>
 
-### Build Instructions
+## Build Instructions
 
 ```bash
-# Create build directory
+# Clone the libdynemit project into your machine
+git clone git@github.com:MuriloChianfa/libdynemit.git
+cd libdynemit
+
+# Setup the release build using all the optimizations
 mkdir build && cd build
-
-# Configure with CMake
-cmake ..
-
-# Build
-make
-
-# Run the benchmark
-./bench/benchmark_vector_mul
-```
-
-<details>
-<summary><b>Build Options</b></summary>
-
-```bash
-# Debug build
-cmake .. -DCMAKE_BUILD_TYPE=Debug
-
-# Release build (default, -O3 optimization)
 cmake .. -DCMAKE_BUILD_TYPE=Release
 
-# List available features
-cmake .. -DLIST_FEATURES=ON
+# Compile
+make
+```
+
+## Installation
+
+```bash
+# Install library and headers
+cd build
+sudo make install
+```
+
+<details>
+<summary>View installed files</summary>
+
+**Libraries** (6 options available):
+- `/usr/local/lib/libdynemit.a` (all-in-one, includes all features)
+- `/usr/local/lib/libdynemit_core.a` (just CPU detection)
+- `/usr/local/lib/libdynemit_vector_add.a` (single feature)
+- `/usr/local/lib/libdynemit_vector_mul.a` (single feature)
+- ... and more
+
+**Headers:**
+- `/usr/local/include/dynemit.h` (umbrella header)
+- `/usr/local/include/dynemit/core.h`
+- `/usr/local/include/dynemit/vector_add.h`
+- `/usr/local/include/dynemit/vector_mul.h`
+- ... and more
+
+</details>
+
+## Library Usage Options
+
+The library provides flexible usage options depending on your needs:
+
+<details open>
+<summary><b>Option 1: All-in-One Library</b> (Recommended for Simplicity)</summary>
+
+Use the bundled library that includes all features:
+
+```c
+#include <dynemit.h>  // Includes core + all features
+
+int main(void) {
+    // Query available features at runtime
+    const char **features = dynemit_features();
+    printf("Available features:\n");
+    for (int i = 0; features[i] != NULL; i++) {
+        printf("  - %s\n", features[i]);
+    }
+    
+    simd_level_t level = detect_simd_level();
+    printf("SIMD level: %s\n", simd_level_name(level));
+    
+    // Use any of the vector operations
+    float a[1024], b[1024], result[1024];
+    vector_add_f32(a, b, result, 1024);
+    vector_mul_f32(a, b, result, 1024);
+    vector_sub_f32(a, b, result, 1024);
+    
+    return 0;
+}
+```
+
+Compile and link:
+```bash
+gcc -O3 myprogram.c -ldynemit -lm -o myprogram
+```
+
+</details>
+
+<details open>
+<summary><b>Option 2: Modular Libraries</b> (For Minimal Binary Size)</summary>
+
+Include only the features you need:
+
+```c
+#include <dynemit/core.h>
+#include <dynemit/vector_add.h>
+#include <dynemit/vector_mul.h>
+
+int main(void) {
+    simd_level_t level = detect_simd_level();
+    float a[1024], b[1024], result[1024];
+    
+    vector_add_f32(a, b, result, 1024);
+    vector_mul_f32(a, b, result, 1024);
+    
+    return 0;
+}
+```
+
+Compile and link:
+```bash
+gcc -O3 myprogram.c -ldynemit_core -ldynemit_vector_add -ldynemit_vector_mul -lm -o myprogram
 ```
 
 </details>
 
 <details>
-<summary><b>Running Tests</b></summary>
+<summary><b>Option 3: Core Only</b></summary>
 
+If you only need CPU detection:
+
+```c
+#include <dynemit/core.h>
+
+int main(void) {
+    simd_level_t level = detect_simd_level();
+    printf("CPU supports: %s\n", simd_level_name(level));
+    return 0;
+}
+```
+
+Compile and link:
 ```bash
-# Build and run tests
-cd build
-make
-ctest --verbose
-
-# Or run individual test
-./tests/test_features
+gcc -O3 myprogram.c -ldynemit_core -lm -o myprogram
 ```
 
 </details>
 
-## Usage
+## Development
 
 ### Running the Benchmark
 
@@ -268,122 +300,99 @@ Actual performance depends on memory bandwidth, CPU architecture, and data acces
 
 </details>
 
-## Installation
+<details>
+<summary><b>Project Structure</b></summary>
+
+## Project Structure
+
+```
+libdynemit/
+├── CMakeLists.txt          # Main CMake configuration
+├── include/
+│   ├── dynemit.h           # Umbrella header (includes all features)
+│   └── dynemit/
+│       ├── core.h          # CPU detection API
+│       ├── vector_add.h    # Vector addition feature
+│       ├── vector_mul.h    # Vector multiplication feature
+│       └── ... and more
+├── src/
+│   ├── CMakeLists.txt      # Core library build config
+│   ├── dynemit.c           # CPU feature detection implementation
+│   └── dynemit_features.c  # Feature list for all-in-one library
+├── features/
+│   ├── vector_add/
+│   │   ├── CMakeLists.txt
+│   │   └── vector_add.c    # SIMD add implementations
+│   ├── vector_mul/
+│   │   ├── CMakeLists.txt
+│   │   └── vector_mul.c    # SIMD multiply implementations
+│   └── ... and more
+├── bench/
+│   ├── CMakeLists.txt      # Benchmark CMake config
+│   └── benchmark_vector_mul.c  # Benchmark program
+├── tests/
+│   ├── CMakeLists.txt      # Tests CMake config
+│   ├── test_features.c     # Feature discovery test
+│   └── test_vector_ops.c   # Vector operations correctness test
+├── docs/
+│   ├── ADDING_FEATURES.md  # Guide for adding new features
+│   └── ARCHITECTURE.md     # Internal architecture documentation
+├── scripts/
+│   └── check_for_simd.sh   # Verify SIMD instructions in binary
+└── README.md
+```
+
+</details>
+
+<details>
+<summary><b>Development build</b></summary>
 
 ```bash
-# Install library and headers
+# Create build directory
+mkdir build && cd build
+
+# Configure with CMake
+cmake ..
+
+# Build
+make
+
+# Run the benchmark
+./bench/benchmark_vector_mul
+```
+</details>
+
+<details>
+<summary><b>Build Options</b></summary>
+
+```bash
+# Debug build
+cmake .. -DCMAKE_BUILD_TYPE=Debug
+
+# Release build (default, -O3 optimization)
+cmake .. -DCMAKE_BUILD_TYPE=Release
+
+# List available features
+cmake .. -DLIST_FEATURES=ON
+```
+
+</details>
+
+<details>
+<summary><b>Running Tests</b></summary>
+
+```bash
+# Build and run tests
 cd build
-sudo make install
-```
+make
+ctest --verbose
 
-<details>
-<summary>View installed files</summary>
-
-**Libraries** (6 options available):
-- `/usr/local/lib/libdynemit.a` (all-in-one, includes all features)
-- `/usr/local/lib/libdynemit_core.a` (just CPU detection)
-- `/usr/local/lib/libdynemit_vector_add.a` (single feature)
-- `/usr/local/lib/libdynemit_vector_mul.a` (single feature)
-- ... and more
-
-**Headers:**
-- `/usr/local/include/dynemit.h` (umbrella header)
-- `/usr/local/include/dynemit/core.h`
-- `/usr/local/include/dynemit/vector_add.h`
-- `/usr/local/include/dynemit/vector_mul.h`
-- ... and more
-
-</details>
-
-## Library Usage Options
-
-The library provides flexible usage options depending on your needs:
-
-<details open>
-<summary><b>Option 1: All-in-One Library</b> (Recommended for Simplicity)</summary>
-
-Use the bundled library that includes all features:
-
-```c
-#include <dynemit.h>  // Includes core + all features
-
-int main(void) {
-    // Query available features at runtime
-    const char **features = dynemit_features();
-    printf("Available features:\n");
-    for (int i = 0; features[i] != NULL; i++) {
-        printf("  - %s\n", features[i]);
-    }
-    
-    simd_level_t level = detect_simd_level();
-    printf("SIMD level: %s\n", simd_level_name(level));
-    
-    // Use any of the vector operations
-    float a[1024], b[1024], result[1024];
-    vector_add_f32(a, b, result, 1024);
-    vector_mul_f32(a, b, result, 1024);
-    vector_sub_f32(a, b, result, 1024);
-    
-    return 0;
-}
-```
-
-Compile and link:
-```bash
-gcc -O3 myprogram.c -ldynemit -lm -o myprogram
+# Or run individual test
+./tests/test_features
 ```
 
 </details>
 
-<details>
-<summary><b>Option 2: Modular Libraries</b> (For Minimal Binary Size)</summary>
-
-Include only the features you need:
-
-```c
-#include <dynemit/core.h>
-#include <dynemit/vector_add.h>
-#include <dynemit/vector_mul.h>
-
-int main(void) {
-    simd_level_t level = detect_simd_level();
-    float a[1024], b[1024], result[1024];
-    
-    vector_add_f32(a, b, result, 1024);
-    vector_mul_f32(a, b, result, 1024);
-    
-    return 0;
-}
-```
-
-Compile and link:
-```bash
-gcc -O3 myprogram.c -ldynemit_core -ldynemit_vector_add -ldynemit_vector_mul -lm -o myprogram
-```
-
-</details>
-
-<details>
-<summary><b>Option 3: Core Only</b></summary>
-
-If you only need CPU detection:
-
-```c
-#include <dynemit/core.h>
-
-int main(void) {
-    simd_level_t level = detect_simd_level();
-    printf("CPU supports: %s\n", simd_level_name(level));
-    return 0;
-}
-```
-
-Compile and link:
-```bash
-gcc -O3 myprogram.c -ldynemit_core -lm -o myprogram
-```
-
-</details>
 
 ## Technical Details
 
@@ -411,6 +420,8 @@ The implementation checks:
 - **XCR0**: OS support for YMM (AVX) and ZMM (AVX-512) state saving
 
 For more details on the internal architecture, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
 
 ### Adding New Features
 
@@ -441,10 +452,6 @@ Quick summary:
 5. **Update main CMakeLists.txt**: Add to `dynemit` all-in-one library
 6. **Update umbrella header**: Add `#include <dynemit/your_feature.h>` in `include/dynemit.h`
 
-## License
-
-See [LICENSE](LICENSE) file for details.
-
 ## Contributing
 
 Contributions are welcome! Areas for improvement:
@@ -452,6 +459,10 @@ Contributions are welcome! Areas for improvement:
 - ARM NEON support
 - AMD-specific optimizations (FMA4, XOP)
 - Additional benchmarks and test cases
+
+## License
+
+See [LICENSE](LICENSE) file for details.
 
 ## References
 
