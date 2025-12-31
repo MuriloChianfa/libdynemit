@@ -1,6 +1,6 @@
-<center>
+<div style="text-align:center;">
 
-libdynemit
+<h1>libdynemit</h1>
 
 [![C23](https://img.shields.io/badge/std-C23-blue.svg)](https://en.cppreference.com/w/c/23)
 [![CMake](https://img.shields.io/badge/CMake-3.16+-green.svg)](https://cmake.org/)
@@ -11,7 +11,7 @@ libdynemit
 
 libdynemit leverages GCC's ifunc resolver to automatically select optimal SIMD implementations at program startup, delivering portable code without sacrificing performance.
 
-</center>
+</div>
 
 ## Example
 
@@ -216,24 +216,7 @@ GFLOP/s   ~= 0.51
 correctness check: OK (first 16 elements)
 ```
 
-<details>
-<summary><b>Verifying SIMD Instructions</b></summary>
-
-Use the included verification script to inspect which SIMD instructions were compiled into the binary:
-
-```bash
-./scripts/check_for_simd.sh
-```
-
-This will show:
-- All `vector_mul_f32` function variants in the symbol table
-- Actual SIMD instructions used in each implementation
-- The ifunc resolver function that performs runtime dispatch
-
-</details>
-
-<details>
-<summary><b>How It Works</b> (Technical Details)</summary>
+### How It Works (Technical Details)
 
 ### 1. CPU Feature Detection
 
@@ -279,26 +262,21 @@ void vector_mul_f32(const float *, const float *, float *, size_t)
 
 This happens **once** at program load time, making subsequent calls as fast as direct function calls.
 
-</details>
+For more details on the internal architecture, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-<details>
-<summary><b>Performance Considerations</b></summary>
+### Verifying SIMD Instructions
 
-- **Alignment**: The benchmark uses 64-byte aligned buffers for optimal memory access
-- **Loop unrolling**: Each SIMD implementation processes multiple elements per iteration
-- **Scalar tail**: Handles remaining elements that don't fit in SIMD registers
-- **Compiler optimization**: Built with `-O3` in release mode
+Use the included verification script to inspect which SIMD instructions were compiled into the binary:
 
-### Expected Performance Gains
+```bash
+./scripts/check_for_simd.sh
+```
 
-Compared to scalar code, approximate speedups:
-- **AVX-512F**: ~16x (processes 16 floats per instruction)
-- **AVX/AVX2**: ~8x (processes 8 floats per instruction)
-- **SSE2/SSE4.2**: ~4x (processes 4 floats per instruction)
+This will show:
+- All function variants in the symbol table
+- Actual SIMD instructions used in each implementation
+- The ifunc resolver function that performs runtime dispatch
 
-Actual performance depends on memory bandwidth, CPU architecture, and data access patterns.
-
-</details>
 
 <details>
 <summary><b>Project Structure</b></summary>
@@ -345,24 +323,6 @@ libdynemit/
 </details>
 
 <details>
-<summary><b>Development build</b></summary>
-
-```bash
-# Create build directory
-mkdir build && cd build
-
-# Configure with CMake
-cmake ..
-
-# Build
-make
-
-# Run the benchmark
-./bench/benchmark_vector_mul
-```
-</details>
-
-<details>
 <summary><b>Build Options</b></summary>
 
 ```bash
@@ -392,34 +352,6 @@ ctest --verbose
 ```
 
 </details>
-
-
-## Technical Details
-
-### C23 Standard
-
-**libdynemit** is written in **C23** (ISO/IEC 9899:2023), taking advantage of modern C features.
-
-The build system enforces C23 compliance and requires **GCC 13 or newer** for proper C23 support.
-
-### GCC Target Attributes
-
-Each function variant is compiled with specific `-march` flags:
-- `target("default")`: Scalar implementation, no special instructions
-- `target("sse2")`: SSE2 instructions + 128-bit XMM registers
-- `target("sse4.2")`: SSE4.2 instructions + 128-bit XMM registers
-- `target("avx")`: AVX instructions + 256-bit YMM registers
-- `target("avx2")`: AVX2 instructions + 256-bit YMM registers
-- `target("avx512f")`: AVX-512 Foundation instructions + 512-bit ZMM registers
-
-### CPUID Detection
-
-The implementation checks:
-- **Leaf 0x01**: SSE2, SSE4.2, OSXSAVE, AVX support bits
-- **Leaf 0x07**: AVX2, AVX-512F support bits
-- **XCR0**: OS support for YMM (AVX) and ZMM (AVX-512) state saving
-
-For more details on the internal architecture, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
