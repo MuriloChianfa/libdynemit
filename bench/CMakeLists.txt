@@ -15,3 +15,9 @@ target_link_libraries(benchmark_vector_mul
         dynemit_vector_mul
         dynemit_core
 )
+
+# Static linking for portability across different glibc versions
+target_link_options(benchmark_vector_mul 
+    PRIVATE 
+        -static
+)

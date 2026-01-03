@@ -1,6 +1,6 @@
-<div style="text-align:center;">
+<div align="center">
 
-<h1>libdynemit</h1>
+<h1 align="center">libdynemit</h1>
 
 [![C23](https://img.shields.io/badge/std-C23-blue.svg)](https://en.cppreference.com/w/c/23)
 [![CMake](https://img.shields.io/badge/CMake-3.16+-green.svg)](https://cmake.org/)
@@ -22,6 +22,11 @@ libdynemit leverages GCC's ifunc resolver to automatically select optimal SIMD i
 // based on your CPU's capabilities, decided once at program startup
 vector_mul_f32(a, b, result, n);
 ```
+
+## Same build, best performance
+
+![Vector Multiply Benchmark](docs/img/benchmark_vector_mul.png)
+*Benchmark comparing vector multiplication performance across different CPU architectures using the same build binary. The library automatically detected and utilized each CPU's highest supported SIMD instruction set (AVX-512F, AVX2, AVX or SSE4.2) at runtime. Lower execution time indicates better performance. Each data point represents the median of 10 trials, with error bars showing ±1 standard deviation.*
 
 ## Requirements
 
@@ -289,16 +294,21 @@ libdynemit/
 │   └── ... and more
 ├── bench/
 │   ├── CMakeLists.txt      # Benchmark CMake config
-│   └── benchmark_vector_mul.c  # Benchmark program
+│   ├── benchmark_vector_mul.c  # Benchmark program
+│   └── data/               # Benchmark results (CSV files)
 ├── tests/
 │   ├── CMakeLists.txt      # Tests CMake config
 │   ├── test_features.c     # Feature discovery test
 │   └── test_vector_ops.c   # Vector operations correctness test
 ├── docs/
 │   ├── ADDING_FEATURES.md  # Guide for adding new features
-│   └── ARCHITECTURE.md     # Internal architecture documentation
+│   ├── ARCHITECTURE.md     # Internal architecture documentation
+│   ├── BENCHMARKING.md     # Benchmarking and visualization guide
+│   └── img/                # Generated benchmark charts
 ├── scripts/
-│   └── check_for_simd.sh   # Verify SIMD instructions in binary
+│   ├── check_for_simd.sh   # Verify SIMD instructions in binary
+│   ├── plot_benchmark.py   # Generate benchmark visualization charts
+│   └── requirements.txt    # Python dependencies for visualization
 └── README.md
 ```
 
@@ -338,21 +348,50 @@ ctest --verbose
 <details>
 <summary><b>Running Benchmarks</b></summary>
 
-The benchmark program detects your CPU's SIMD capabilities and runs a performance test:
+The benchmark program measures **single-core** performance across multiple array sizes and SIMD levels:
 
+**Quick benchmark (human-readable output):**
 ```bash
 ./build/bench/benchmark_vector_mul
 ```
 
 Example output:
 ```
-Detected SIMD level: AVX
-n = 1048576, iters = 2000
-elapsed = 4.129774 s
-throughput ~= 6.09 GB/s (counting a+b+out)
-GFLOP/s   ~= 0.51
-correctness check: OK (first 16 elements)
+===========================================
+Vector Multiply Benchmark
+===========================================
+Detected SIMD level: AVX2
+(this is the version the ifunc dispatcher will pick)
+
+--- Benchmarking size: 1024 elements ---
+  n = 1024, iters = 5000
+  time per call = 0.001234 ms
+  GFLOP/s = 0.8296
+  correctness: OK
+...
 ```
+
+**Auto-detect CPU and save results:**
+```bash
+./build/bench/benchmark_vector_mul --auto-detect
+# Automatically creates: bench/data/results_<cpu_model>_<simd_level>.csv
+```
+
+**Generate CSV data for visualization:**
+```bash
+./build/bench/benchmark_vector_mul --csv > results.csv
+```
+
+**Create performance charts:**
+```bash
+# Install Python dependencies (first time only)
+pip install -r scripts/requirements.txt
+
+# Generate chart (labels auto-inferred from filenames)
+python scripts/plot_benchmark.py bench/data/*.csv
+```
+
+For detailed benchmarking instructions, including how to compare different SIMD levels and CPUs, see [docs/BENCHMARKING.md](docs/BENCHMARKING.md).
 
 </details>
 
