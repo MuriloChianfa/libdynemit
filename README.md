@@ -431,6 +431,59 @@ Quick summary:
 5. **Update main CMakeLists.txt**: Add to `dynemit` all-in-one library
 6. **Update umbrella header**: Add `#include <dynemit/your_feature.h>` in `include/dynemit.h`
 
+## Verifying Binary Signatures
+
+libdynemit binaries are cryptographically signed with GPG for authenticity verification. To verify a downloaded binary:
+
+### 1. Import the Public Key
+
+Import the maintainer's public key directly from the keyserver using the key fingerprint:
+
+```bash
+gpg --keyserver keys.openpgp.org --recv-keys 3E1A1F401A1C47BC77D1705612D0D82387FC53B0
+```
+
+<details>
+<summary><b>Alternative options</b></summary>
+
+Using the shorter key ID:
+
+```bash
+gpg --keyserver keys.openpgp.org --recv-keys 12D0D82387FC53B0
+```
+
+**Alternative keyserver** (if `keys.openpgp.org` is unavailable):
+
+```bash
+gpg --keyserver hkp://keyserver.ubuntu.com --recv-keys 3E1A1F401A1C47BC77D1705612D0D82387FC53B0
+```
+
+</details>
+
+You should see output confirming the key was imported:
+```
+gpg: key 12D0D82387FC53B0: public key "MuriloChianfa <murilo.chianfa@outlook.com>" imported
+gpg: Total number processed: 1
+gpg:               imported: 1
+```
+
+### 2. Verify the Signature
+
+Assuming you have downloaded both the binary (`libdynemit.a`) and its signature file (`libdynemit.a.asc`):
+
+```bash
+gpg --verify libdynemit.a.asc libdynemit.a
+```
+
+If the signature is valid, you should see:
+```
+gpg: Signature made [date and time]
+gpg:                using EDDSA key 3E1A1F401A1C47BC77D1705612D0D82387FC53B0
+gpg: Good signature from "MuriloChianfa <murilo.chianfa@outlook.com>"
+```
+
+If you see "BAD signature", **do not use** the binary - it may have been tampered with or corrupted.
+
 ## Contributing
 
 Contributions are welcome! Areas for improvement:
