@@ -23,10 +23,30 @@ libdynemit leverages GCC's ifunc resolver to automatically select optimal SIMD i
 vector_mul_f32(a, b, result, n);
 ```
 
-## Same build, best performance
+## Performance Benchmarks
+
+<table>
+<tr>
+<td width="45%">
+
+### Forced SIMD instructions without dynamic dispatch
+
+![SIMD Feature Comparison](docs/img/benchmark_vector_mul_feature_compare.png)
+
+*Performance scaling comparison of different SIMD instruction sets on the same CPU (AMD Ryzen 9 9950X3D). This benchmark demonstrates the progressive performance improvements from Scalar → SSE2 → SSE4.2 → AVX → AVX2 → AVX-512F. Each implementation was built and tested separately to isolate the impact of each SIMD level. The chart shows ~1.8x speedup from AVX-512F compared to scalar code for large arrays. Lower execution time indicates better performance. Each data point represents the median of 10 trials, with error bars showing ±1 standard deviation.*
+
+</td>
+<td width="55%">
+
+### Same build, best performance
 
 ![Vector Multiply Benchmark](docs/img/benchmark_vector_mul.png)
+
 *Benchmark comparing vector multiplication performance across different CPU architectures using the same build binary. The library automatically detected and utilized each CPU's highest supported SIMD instruction set (AVX-512F, AVX2, AVX or SSE4.2) at runtime. Lower execution time indicates better performance. Each data point represents the median of 10 trials, with error bars showing ±1 standard deviation.*
+
+</td>
+</tr>
+</table>
 
 ## Requirements
 
