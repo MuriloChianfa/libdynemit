@@ -62,4 +62,10 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 Makefile
-bench/benchmark_vector_mul_*
+# Ignore compiled benchmark binaries (but not source .c files)
+bench/benchmark_vector_mul_scalar
+bench/benchmark_vector_mul_sse2
+bench/benchmark_vector_mul_sse4_2
+bench/benchmark_vector_mul_avx
+bench/benchmark_vector_mul_avx2
+bench/benchmark_vector_mul_avx512f
