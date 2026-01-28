@@ -11,6 +11,11 @@ target_include_directories(dynemit_core_obj
         ${PROJECT_SOURCE_DIR}/include
 )
 
+# Set position independent code for use in shared libraries
+set_target_properties(dynemit_core_obj PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+)
+
 # Individual static library
 add_library(dynemit_core STATIC 
     $<TARGET_OBJECTS:dynemit_core_obj>

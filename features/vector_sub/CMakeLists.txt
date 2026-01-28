@@ -13,6 +13,11 @@ target_include_directories(vector_sub_obj
 
 target_link_libraries(vector_sub_obj PUBLIC dynemit_core)
 
+# Set position independent code for use in shared libraries
+set_target_properties(vector_sub_obj PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+)
+
 # Individual static library
 add_library(dynemit_vector_sub STATIC 
     $<TARGET_OBJECTS:vector_sub_obj>
