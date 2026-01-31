@@ -9,7 +9,7 @@
 
 > **Write once, run efficiently everywhere without pain.**
 
-libdynemit leverages GCC's ifunc resolver to automatically select optimal SIMD implementations at program startup, delivering portable code without sacrificing performance.
+libdynemit leverages GCC's ifunc resolver to automatically select optimal SIMD implementations at program startup, delivering portable code without sacrificing performance. Thread-safe SIMD detection and dlopen-safe resolver utilities ensure robust operation in multi-threaded applications and dynamic library loading scenarios.
 
 </div>
 
@@ -109,7 +109,8 @@ sudo make install
 
 **Headers:**
 - `/usr/local/include/dynemit.h` (umbrella header)
-- `/usr/local/include/dynemit/core.h`
+- `/usr/local/include/dynemit/core.h` (CPU detection, SIMD levels)
+- `/usr/local/include/dynemit/err.h` (safe IFUNC resolver utilities)
 - `/usr/local/include/dynemit/vector_add.h`
 - `/usr/local/include/dynemit/vector_mul.h`
 - ... and more
@@ -221,6 +222,13 @@ simd_level_t level = detect_simd_level();
 // Returns highest supported SIMD level
 ```
 
+For thread-safe contexts (multi-threaded code, IFUNC resolvers, dlopen()-loaded libraries), use the cached version:
+
+```c
+simd_level_t level = detect_simd_level_ts();
+// Thread-safe, cached SIMD detection
+```
+
 ### 2. Multiple SIMD Implementations
 
 Each SIMD level has its own implementation compiled with appropriate GCC target attributes:
@@ -255,6 +263,32 @@ void vector_mul_f32(const float *, const float *, float *, size_t)
 This happens **once** at program load time, making subsequent calls as fast as direct function calls.
 
 For more details on the internal architecture, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+### 4. Safe IFUNC Resolvers (for dlopen)
+
+When building libraries that may be loaded via `dlopen()`, use the safe resolver utilities from `<dynemit/err.h>`:
+
+```c
+#include <dynemit/core.h>
+#include <dynemit/err.h>
+
+EXPLICIT_RUNTIME_RESOLVER(my_function_resolver)
+{
+    simd_level_t level = detect_simd_level_ts();  // Thread-safe!
+    
+    switch (level) {
+        case SIMD_AVX2: return (void*)my_function_avx2;
+        default:        return (void*)my_function_scalar;
+    }
+}
+```
+
+This ensures:
+- Thread-safe, cached SIMD detection
+- NULL-check protection (traps immediately instead of crashing later)
+- Compatibility with Python's module loading
+
+For detailed documentation, see [docs/IFUNC_RESOLVERS.md](docs/IFUNC_RESOLVERS.md).
 
 ### Verifying SIMD Instructions
 

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSL-1.0 */
 #ifndef DYNEMIT_H
 #define DYNEMIT_H
 
@@ -10,6 +11,9 @@
 
 // Core CPU detection and SIMD level detection
 #include <dynemit/core.h>
+
+// Error handling utilities for IFUNC resolvers
+#include <dynemit/err.h>
 
 // Features - automatically included when using the all-in-one library
 #ifdef DYNEMIT_ALL_FEATURES

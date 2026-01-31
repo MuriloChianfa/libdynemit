@@ -36,6 +36,8 @@ install(TARGETS dynemit_core
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/core.h
+install(FILES 
+    ${PROJECT_SOURCE_DIR}/include/dynemit/core.h
+    ${PROJECT_SOURCE_DIR}/include/dynemit/err.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit
 )

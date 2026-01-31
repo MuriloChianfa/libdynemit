@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSL-1.0 */
 #include <stddef.h>
 
 // This file is only compiled for the all-in-one dynemit library

@@ -1,5 +1,7 @@
+/* SPDX-License-Identifier: BSL-1.0 */
 #include <dynemit/core.h>
 #include <stddef.h>
+#include <stdatomic.h>
 
 void
 cpuid_x86(uint32_t leaf, uint32_t subleaf,
@@ -76,6 +78,33 @@ detect_simd_level(void)
     if (sse2) return SIMD_SSE2;
     return SIMD_SCALAR;
 #endif
+}
+
+simd_level_t
+detect_simd_level_ts(void)
+{
+    // Use -1 as sentinel for "not yet initialized"
+    // Valid simd_level_t values are 0-5 (SIMD_SCALAR to SIMD_AVX512F)
+    static _Atomic int cached_level = -1;
+    
+    int level = atomic_load_explicit(&cached_level, memory_order_acquire);
+    
+    if (level < 0) {
+        // Not yet initialized - detect now
+        simd_level_t detected = detect_simd_level();
+        
+        // Try to cache it (race is okay - all threads will get same result)
+        int expected = -1;
+        if (atomic_compare_exchange_strong(&cached_level, &expected, (int)detected)) {
+            // We won the race
+            level = (int)detected;
+        } else {
+            // Someone else cached it first, use their value
+            level = atomic_load_explicit(&cached_level, memory_order_acquire);
+        }
+    }
+    
+    return (simd_level_t)level;
 }
 
 const char *

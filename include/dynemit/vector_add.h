@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSL-1.0 */
 #ifndef DYNEMIT_VECTOR_ADD_H
 #define DYNEMIT_VECTOR_ADD_H
 

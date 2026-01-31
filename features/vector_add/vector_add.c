@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSL-1.0 */
 #include <immintrin.h>
 #include <stddef.h>
 #include <dynemit/core.h>
