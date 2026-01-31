@@ -2,6 +2,10 @@
 #ifndef DYNEMIT_ERR_H
 #define DYNEMIT_ERR_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file err.h
  * @brief Error handling utilities for dynemit runtime dispatch
@@ -86,5 +90,9 @@
         return result; \
     } \
     static void* name##_impl(void)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DYNEMIT_ERR_H */

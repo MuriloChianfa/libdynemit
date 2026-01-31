@@ -207,6 +207,91 @@ gcc -O3 myprogram.c -ldynemit_core -lm -o myprogram
 
 </details>
 
+## C++ Compatibility
+
+The library is fully compatible with C++ and includes `extern "C"` guards in all headers. You can use it seamlessly in C++ projects:
+
+<details open>
+<summary><b>Basic C++ Usage</b></summary>
+
+```cpp
+#include <dynemit.h>
+#include <vector>
+#include <iostream>
+
+int main() {
+    // Query SIMD capabilities
+    simd_level_t level = detect_simd_level();
+    std::cout << "SIMD Level: " << simd_level_name(level) << std::endl;
+    
+    // Use with STL containers
+    std::vector<float> a(1024, 1.0f);
+    std::vector<float> b(1024, 2.0f);
+    std::vector<float> result(1024);
+    
+    // Automatically dispatches to optimal SIMD implementation
+    vector_mul_f32(a.data(), b.data(), result.data(), a.size());
+    vector_add_f32(a.data(), b.data(), result.data(), a.size());
+    vector_sub_f32(a.data(), b.data(), result.data(), a.size());
+    
+    return 0;
+}
+```
+
+Compile and link with g++:
+```bash
+g++ -std=c++17 -O3 myprogram.cpp -ldynemit -lm -o myprogram
+```
+
+</details>
+
+<details>
+<summary><b>C++ with Custom IFUNC Resolvers</b></summary>
+
+You can use the `EXPLICIT_RUNTIME_RESOLVER` macro in C++ to create your own IFUNC resolvers:
+
+```cpp
+#include <dynemit/core.h>
+#include <dynemit/err.h>
+
+// Define implementations
+static void my_func_scalar(float* out, const float* in, size_t n) { /* ... */ }
+static void my_func_avx2(float* out, const float* in, size_t n) { /* ... */ }
+static void my_func_avx512(float* out, const float* in, size_t n) { /* ... */ }
+
+// Create resolver with C++ type safety
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+
+EXPLICIT_RUNTIME_RESOLVER(my_func_resolver) {
+    simd_level_t level = detect_simd_level_ts();
+    
+    switch (level) {
+    case SIMD_AVX512F:
+        return reinterpret_cast<void*>(my_func_avx512);
+    case SIMD_AVX2:
+        return reinterpret_cast<void*>(my_func_avx2);
+    default:
+        return reinterpret_cast<void*>(my_func_scalar);
+    }
+}
+
+#pragma GCC diagnostic pop
+
+extern "C" void my_func(float* out, const float* in, size_t n)
+    __attribute__((ifunc("my_func_resolver")));
+```
+
+</details>
+
+**Notes:**
+- C++17 or later is recommended for best compatibility
+- All headers include proper `extern "C"` linkage guards
+- Use `reinterpret_cast<void*>` for function pointers in resolvers
+- The `-Wpedantic` warning about function-to-void* conversions is expected and safe for IFUNC resolvers
+
+</details>
+
 ## Development
 
 ### How It Works (Technical Details)

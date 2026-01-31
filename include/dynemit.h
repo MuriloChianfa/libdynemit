@@ -9,6 +9,10 @@
  * Include this header to get access to all features and CPU detection APIs.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Core CPU detection and SIMD level detection
 #include <dynemit/core.h>
 
@@ -27,6 +31,10 @@
 // #include <dynemit/vector_mul.h>
 // #include <dynemit/vector_sub.h>
 // etc.
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // DYNEMIT_H
 

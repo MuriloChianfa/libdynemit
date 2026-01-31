@@ -7,49 +7,41 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-test:
-    name: Build & Test (GCC ${{ matrix.gcc-version }}, ${{ matrix.build-type }})
+  build-and-test-c:
+    name: C Tests (GCC ${{ matrix.gcc-version }}, ${{ matrix.build-type }})
     runs-on: ubuntu-latest
+    container: gcc:${{ matrix.gcc-version }}
     strategy:
       fail-fast: false
       matrix:
-        gcc-version: [13, 14]
+        gcc-version: [13, 14, 15]
         build-type: [Debug, Release]
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install GCC ${{ matrix.gcc-version }}
+    - name: Install dependencies
       run: |
-        sudo apt update
-        sudo apt install -y gcc-${{ matrix.gcc-version }} g++-${{ matrix.gcc-version }}
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.gcc-version }} 100
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${{ matrix.gcc-version }} 100
+        apt update
+        apt install -y cmake
     
     - name: Verify GCC version
       run: |
         gcc --version
+        g++ --version
         gcc -dumpversion
     
-    - name: Install CMake
-      uses: jwlawson/actions-setup-cmake@v2
-      with:
-        cmake-version: '3.25.x'
-    
     - name: Configure CMake
-      run: |
-        cmake -B build \
-          -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
-          -DCMAKE_C_COMPILER=gcc-${{ matrix.gcc-version }}
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build-type }}
     
     - name: Build
       run: cmake --build build --config ${{ matrix.build-type }} -j$(nproc)
     
-    - name: Run tests
+    - name: Run C tests
       run: |
         cd build
-        ctest --output-on-failure --verbose
+        ctest --output-on-failure --verbose -R "^test_(features|vector_ops|thread_safe_detection|resolver_macro)$"
     
     - name: Run benchmarks
       if: matrix.build-type == 'Release'
@@ -60,6 +52,42 @@ jobs:
     - name: List features
       run: |
         cmake -B build-list -DLIST_FEATURES=ON || true
+
+  build-and-test-cpp:
+    name: C++ Tests (GCC ${{ matrix.gcc-version }}, ${{ matrix.build-type }})
+    runs-on: ubuntu-latest
+    container: gcc:${{ matrix.gcc-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        gcc-version: [13, 14, 15]
+        build-type: [Debug, Release]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        apt update
+        apt install -y cmake
+    
+    - name: Verify GCC/G++ version
+      run: |
+        gcc --version
+        g++ --version
+        gcc -dumpversion
+    
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build-type }}
+    
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build-type }} -j$(nproc)
+    
+    - name: Run C++ tests
+      run: |
+        cd build
+        ctest --output-on-failure --verbose -R "^test_cpp_"
 
   code-quality:
     name: Code Quality Checks
@@ -117,7 +145,7 @@ jobs:
     
     - name: Build Release
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13
         cmake --build build -j$(nproc)
     
     - name: Check for SIMD instructions
@@ -176,7 +204,7 @@ jobs:
     
     - name: Build Release
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13
         cmake --build build -j$(nproc)
     
     - name: Package libraries
