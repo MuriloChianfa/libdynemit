@@ -8,8 +8,6 @@
 [![Clang](https://img.shields.io/badge/Clang-16%2B-green.svg)](https://clang.llvm.org/)
 [![License: Boost](https://img.shields.io/badge/License-Boost_1.0-lightblue.svg)](https://www.boost.org/LICENSE_1_0.txt)
 
-> **Write once, run efficiently everywhere without pain.**
-
 libdynemit leverages the ifunc resolver (supported by both GCC and Clang on Linux) to automatically select optimal SIMD implementations at program startup, delivering portable code without sacrificing performance. Thread-safe SIMD detection and dlopen-safe resolver utilities ensure robust operation in multi-threaded applications and dynamic library loading scenarios.
 
 </div>

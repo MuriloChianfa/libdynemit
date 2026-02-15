@@ -19,18 +19,11 @@ extern "C" {
 // Error handling utilities for IFUNC resolvers
 #include <dynemit/err.h>
 
-// Features - automatically included when using the all-in-one library
-#ifdef DYNEMIT_ALL_FEATURES
+// All features - include by default for convenience
+// Users can still include individual headers if they prefer
 #include <dynemit/vector_add.h>
 #include <dynemit/vector_mul.h>
 #include <dynemit/vector_sub.h>
-#endif
-
-// Alternatively, users can include individual feature headers:
-// #include <dynemit/vector_add.h>
-// #include <dynemit/vector_mul.h>
-// #include <dynemit/vector_sub.h>
-// etc.
 
 #ifdef __cplusplus
 }

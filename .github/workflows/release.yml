@@ -1,0 +1,268 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["Packaging"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    environment: release
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Determine version from tag
+        id: version
+        run: |
+          git fetch --tags
+          TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+          if [ -z "$TAG" ]; then
+            echo "Error: No tag found on this commit"
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts
+
+      - name: Organize artifacts
+        run: |
+          mkdir -p release
+          
+          # Copy DEB packages
+          find artifacts/deb-packages -name "*.deb" -exec cp {} release/ \;
+          
+          # Copy RPM packages
+          find artifacts/rpm-packages -name "*.rpm" -exec cp {} release/ \;
+          
+          ls -lah release/
+
+      - name: Generate checksums
+        run: |
+          cd release
+          sha256sum *.deb *.rpm 2>/dev/null | tee SHA256SUMS
+          sha512sum *.deb *.rpm 2>/dev/null | tee SHA512SUMS
+
+      - name: Sign artifacts with GPG
+        id: gpg_sign
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -z "$GPG_PRIVATE_KEY" ]; then
+            echo "GPG signing skipped - no key configured"
+            echo "gpg_signed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          export GNUPGHOME="$(mktemp -d)"
+          chmod 700 "$GNUPGHOME"
+          
+          IMPORT_OUTPUT=$(echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>&1)
+          KEY_ID=$(echo "$IMPORT_OUTPUT" | grep -oP 'key \K[A-F0-9]{16}' | head -1)
+
+          if ! gpg --list-keys >/dev/null 2>&1; then
+            echo "::error::Failed to import GPG key"
+            exit 1
+          fi
+          
+          FINGERPRINT=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '/^fpr:/ {print $10; exit}')
+          [ -z "$FINGERPRINT" ] && FINGERPRINT=$(gpg --list-keys --with-colons 2>/dev/null | awk -F: '/^fpr:/ {print $10; exit}')
+          [ -z "$FINGERPRINT" ] && [ -n "$KEY_ID" ] && FINGERPRINT="$KEY_ID"
+          
+          if [ -z "$FINGERPRINT" ]; then
+            echo "::error::Failed to extract GPG key fingerprint"
+            exit 1
+          fi
+          
+          SIGNING_KEY="${KEY_ID:-$FINGERPRINT}"
+          echo "gpg_fingerprint=$FINGERPRINT" >> $GITHUB_OUTPUT
+          
+          echo "allow-loopback-pinentry" >> "$GNUPGHOME/gpg-agent.conf"
+          gpg-connect-agent reloadagent /bye 2>/dev/null || true
+          
+          find release -type f \( -name "*.deb" -o -name "*.rpm" \) | while read f; do
+            if [ -n "$GPG_PASSPHRASE" ]; then
+              echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --default-key "$SIGNING_KEY" --armor --detach-sign "$f"
+            else
+              gpg --batch --yes --default-key "$SIGNING_KEY" --armor --detach-sign "$f"
+            fi
+          done
+          
+          echo "gpg_signed=true" >> $GITHUB_OUTPUT
+          rm -rf "$GNUPGHOME"
+
+      - name: Sign checksums with GPG
+        if: steps.gpg_sign.outputs.gpg_signed == 'true'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          export GNUPGHOME="$(mktemp -d)"
+          chmod 700 "$GNUPGHOME"
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>&1
+
+          echo "allow-loopback-pinentry" >> "$GNUPGHOME/gpg-agent.conf"
+          gpg-connect-agent reloadagent /bye 2>/dev/null || true
+          
+          cd release
+          
+          if [ -n "$GPG_PASSPHRASE" ]; then
+            echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --armor --detach-sign SHA256SUMS
+            echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --armor --detach-sign SHA512SUMS
+          else
+            gpg --batch --yes --armor --detach-sign SHA256SUMS
+            gpg --batch --yes --armor --detach-sign SHA512SUMS
+          fi
+          
+          rm -rf "$GNUPGHOME"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          REPO_URL="https://github.com/${{ github.repository }}"
+          RELEASE_URL="${REPO_URL}/releases/download/${TAG}"
+          
+          cat > release_notes.md << 'RELEASE_NOTES_EOF'
+          A high-performance SIMD library that leverages ifunc resolvers for automatic runtime dispatch. Write portable code that automatically uses the best SIMD instructions available on your CPU.
+          
+          **Key features:**
+          - Automatic CPU feature detection at program startup
+          - Runtime dispatch using ifunc resolvers (GCC & Clang)
+          - Support for SSE2, SSE4.2, AVX, AVX2, and AVX-512F
+          - Thread-safe SIMD level detection
+          - Both shared and static libraries
+          - C23 and C++17+ compatible
+          
+          ## 📦 Installation
+          
+          ### Debian/Ubuntu
+          
+          **Runtime package** (for running applications):
+          \`\`\`bash
+          wget ${RELEASE_URL}/libdynemit_${VERSION}_amd64.deb
+          sudo dpkg -i libdynemit_${VERSION}_amd64.deb
+          \`\`\`
+          
+          **Development package** (for building applications):
+          \`\`\`bash
+          wget ${RELEASE_URL}/libdynemit-dev_${VERSION}_amd64.deb
+          sudo dpkg -i libdynemit_${VERSION}_amd64.deb libdynemit-dev_${VERSION}_amd64.deb
+          \`\`\`
+          
+          ### Fedora/RHEL
+          
+          **Runtime package**:
+          \`\`\`bash
+          wget ${RELEASE_URL}/libdynemit-${VERSION}-1.fc40.x86_64.rpm
+          sudo dnf install libdynemit-${VERSION}-1.fc40.x86_64.rpm
+          \`\`\`
+          
+          **Development package**:
+          \`\`\`bash
+          wget ${RELEASE_URL}/libdynemit-devel-${VERSION}-1.fc40.x86_64.rpm
+          sudo dnf install libdynemit-${VERSION}-1.fc40.x86_64.rpm libdynemit-devel-${VERSION}-1.fc40.x86_64.rpm
+          \`\`\`
+          
+          ## 💻 Usage
+          
+          **Example program:**
+          \`\`\`c
+          #include <dynemit.h>
+          
+          int main(void) {
+              float a[1024], b[1024], result[1024];
+              
+              // Automatically uses AVX-512, AVX2, AVX, SSE4.2, SSE2 or scalar
+              vector_mul_f32(a, b, result, 1024);
+              
+              return 0;
+          }
+          \`\`\`
+          
+          **Compile with shared library:**
+          \`\`\`bash
+          gcc -O3 myprogram.c -ldynemit -lm -o myprogram
+          \`\`\`
+          
+          **Compile with static library:**
+          \`\`\`bash
+          gcc -O3 myprogram.c -static -ldynemit -lm -o myprogram
+          \`\`\`
+          
+          ## 🔒 Verification
+          
+          All artifacts include SHA256 and SHA512 checksums for integrity verification, and are cryptographically signed with GPG for authenticity.
+          
+          ### Verify GPG Signatures
+          
+          \`\`\`bash
+          # Import the maintainer's public key
+          gpg --keyserver keys.openpgp.org --recv-keys 3E1A1F401A1C47BC77D1705612D0D82387FC53B0
+          
+          # Verify a package
+          gpg --verify libdynemit_${VERSION}_amd64.deb.asc libdynemit_${VERSION}_amd64.deb
+          \`\`\`
+          
+          ### Verify Checksums
+          
+          \`\`\`bash
+          curl -LO ${RELEASE_URL}/SHA256SUMS
+          curl -LO ${RELEASE_URL}/SHA256SUMS.asc
+          gpg --verify SHA256SUMS.asc SHA256SUMS
+          sha256sum -c SHA256SUMS --ignore-missing
+          \`\`\`
+          
+          ## 📚 Documentation
+          
+          - [README](${REPO_URL}/blob/main/README.md)
+          - [Architecture](${REPO_URL}/blob/main/docs/ARCHITECTURE.md)
+          - [Adding Features](${REPO_URL}/blob/main/docs/ADDING_FEATURES.md)
+          - [IFUNC Resolvers](${REPO_URL}/blob/main/docs/IFUNC_RESOLVERS.md)
+          
+          ## 🔧 Requirements
+          
+          **Runtime**: Linux x86_64
+          **Development**: GCC 13+ or Clang 16+, CMake 3.16+
+          
+          ## 💡 Available Operations
+          
+          - \`vector_add_f32\` - Vector addition (float)
+          - \`vector_mul_f32\` - Vector multiplication (float)
+          - \`vector_sub_f32\` - Vector subtraction (float)
+          - \`detect_simd_level()\` - CPU feature detection
+          - \`detect_simd_level_ts()\` - Thread-safe detection
+          
+          RELEASE_NOTES_EOF
+          
+          echo "notes_file=release_notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body_path: ${{ steps.release_notes.outputs.notes_file }}
+          draft: true
+          prerelease: ${{ contains(steps.version.outputs.tag, '-') }}
+          files: release/*
+          append_body: true
+          generate_release_notes: true

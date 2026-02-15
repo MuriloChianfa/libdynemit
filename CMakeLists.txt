@@ -62,43 +62,96 @@ endif()
 
 # Add subdirectories for core and features
 add_subdirectory(src)
-add_subdirectory(features/vector_add)
-add_subdirectory(features/vector_mul)
-add_subdirectory(features/vector_sub)
+
+# Automatically discover and add all feature subdirectories
+file(GLOB FEATURE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/features/*")
+set(FEATURE_OBJECTS "")
+foreach(FEATURE_DIR ${FEATURE_DIRS})
+    if(IS_DIRECTORY ${FEATURE_DIR})
+        get_filename_component(FEATURE_NAME ${FEATURE_DIR} NAME)
+        add_subdirectory(features/${FEATURE_NAME})
+        # Collect feature object library names
+        list(APPEND FEATURE_OBJECTS $<TARGET_OBJECTS:${FEATURE_NAME}_obj>)
+    endif()
+endforeach()
+
 add_subdirectory(bench)
 
 # Enable testing
 enable_testing()
 add_subdirectory(tests)
 
-# Create all-in-one library combining core + all features
-add_library(dynemit STATIC
+# Create all-in-one STATIC library combining core + all features
+add_library(dynemit_static STATIC
     $<TARGET_OBJECTS:dynemit_core_obj>
-    $<TARGET_OBJECTS:vector_add_obj>
-    $<TARGET_OBJECTS:vector_mul_obj>
-    $<TARGET_OBJECTS:vector_sub_obj>
+    ${FEATURE_OBJECTS}
     src/dynemit_features.c  # Feature list for all-in-one library
 )
 
-target_include_directories(dynemit 
+set_target_properties(dynemit_static PROPERTIES
+    OUTPUT_NAME dynemit
+)
+
+target_include_directories(dynemit_static 
     PUBLIC 
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(dynemit PUBLIC m)
+target_link_libraries(dynemit_static PUBLIC m)
 
 # Define DYNEMIT_ALL_FEATURES for users of the all-in-one library
-target_compile_definitions(dynemit PUBLIC DYNEMIT_ALL_FEATURES)
+target_compile_definitions(dynemit_static PUBLIC DYNEMIT_ALL_FEATURES)
+
+# Create all-in-one SHARED library combining core + all features
+add_library(dynemit_shared SHARED
+    $<TARGET_OBJECTS:dynemit_core_obj>
+    ${FEATURE_OBJECTS}
+    src/dynemit_features.c  # Feature list for all-in-one library
+)
+
+set_target_properties(dynemit_shared PROPERTIES
+    OUTPUT_NAME dynemit
+    VERSION ${PROJECT_VERSION}
+    SOVERSION 1
+)
+
+target_include_directories(dynemit_shared 
+    PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(dynemit_shared PUBLIC m)
+
+# Define DYNEMIT_ALL_FEATURES for users of the all-in-one library
+target_compile_definitions(dynemit_shared PUBLIC DYNEMIT_ALL_FEATURES)
+
+# Create dynemit alias target for backward compatibility (points to static)
+add_library(dynemit ALIAS dynemit_static)
 
 # Installation rules
 include(GNUInstallDirs)
 
-install(TARGETS dynemit
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+install(TARGETS dynemit_static dynemit_shared
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Development
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Runtime
+    NAMELINK_COMPONENT Development
 )
 
 install(FILES include/dynemit.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    COMPONENT Development
+)
+
+# Configure and install pkg-config file
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/libdynemit.pc.in
+    ${CMAKE_CURRENT_BINARY_DIR}/libdynemit.pc
+    @ONLY
+)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libdynemit.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+    COMPONENT Development
 )
 
 # Print configuration summary

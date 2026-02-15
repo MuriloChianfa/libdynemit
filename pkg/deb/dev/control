@@ -1,0 +1,22 @@
+Package: libdynemit-dev
+Version: {{VERSION}}
+Architecture: amd64
+Maintainer: MuriloChianfa <murilo.chianfa@outlook.com>
+Depends: libdynemit (= {{VERSION}}), libc6-dev
+Section: libdevel
+Priority: optional
+Homepage: https://github.com/MuriloChianfa/libdynemit
+Description: SIMD dynamic dispatch library - development files
+ libdynemit provides automatic SIMD runtime dispatch using ifunc resolvers.
+ Write portable code that automatically uses the best SIMD instructions
+ (SSE2, SSE4.2, AVX, AVX2, AVX-512F) available on the target CPU.
+ .
+ Features:
+  - Automatic CPU feature detection at program startup
+  - Thread-safe SIMD level detection
+  - Support for GCC 13+ and Clang 16+
+  - All-in-one library or modular feature libraries
+  - C23 and C++17+ compatible
+ .
+ This package contains static libraries, header files, and pkg-config
+ support for developing applications that use libdynemit.

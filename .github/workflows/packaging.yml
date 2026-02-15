@@ -1,0 +1,212 @@
+name: Packaging
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0, v1.2.0)'
+        required: true
+
+jobs:
+  version:
+    name: Determine Version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION#v}" >> "$GITHUB_OUTPUT"
+
+  deb:
+    name: Build DEB packages
+    runs-on: ubuntu-22.04
+    needs: version
+
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-13 g++-13 cmake \
+            dpkg-dev fakeroot
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build library
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc-13 \
+            -DCMAKE_CXX_COMPILER=g++-13 \
+            -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build build -j$(nproc)
+
+      - name: Build runtime DEB package
+        run: |
+          PKG_DIR="$(pwd)/libdynemit_${{ needs.version.outputs.version }}_amd64"
+          mkdir -p "${PKG_DIR}/usr/lib"
+          mkdir -p "${PKG_DIR}/usr/share/doc/libdynemit"
+          mkdir -p "${PKG_DIR}/DEBIAN"
+
+          # Install shared libraries (runtime)
+          cp build/libdynemit.so.${{ needs.version.outputs.version }} "${PKG_DIR}/usr/lib/"
+          ln -s libdynemit.so.${{ needs.version.outputs.version }} "${PKG_DIR}/usr/lib/libdynemit.so.1"
+          
+          cp build/src/libdynemit_core.so.${{ needs.version.outputs.version }} "${PKG_DIR}/usr/lib/"
+          ln -s libdynemit_core.so.${{ needs.version.outputs.version }} "${PKG_DIR}/usr/lib/libdynemit_core.so.1"
+          
+          find build/features -name "*.so.${{ needs.version.outputs.version }}" -exec cp {} "${PKG_DIR}/usr/lib/" \;
+          for lib in "${PKG_DIR}"/usr/lib/*.so.${{ needs.version.outputs.version }}; do
+            base=$(basename "$lib" .so.${{ needs.version.outputs.version }})
+            ln -s "$(basename $lib)" "${PKG_DIR}/usr/lib/${base}.so.1"
+          done
+
+          # Install documentation
+          cp README.md "${PKG_DIR}/usr/share/doc/libdynemit/"
+          cp LICENSE "${PKG_DIR}/usr/share/doc/libdynemit/"
+
+          # Generate control file from template
+          sed "s/{{VERSION}}/${{ needs.version.outputs.version }}/g" \
+            pkg/deb/runtime/control > "${PKG_DIR}/DEBIAN/control"
+
+          # Copy copyright
+          cp pkg/deb/common/copyright "${PKG_DIR}/usr/share/doc/libdynemit/"
+
+          # Build package
+          dpkg-deb --build "${PKG_DIR}"
+
+      - name: Build dev DEB package
+        run: |
+          PKG_DIR="$(pwd)/libdynemit-dev_${{ needs.version.outputs.version }}_amd64"
+          mkdir -p "${PKG_DIR}/usr/lib"
+          mkdir -p "${PKG_DIR}/usr/include/dynemit"
+          mkdir -p "${PKG_DIR}/usr/lib/pkgconfig"
+          mkdir -p "${PKG_DIR}/usr/share/doc/libdynemit-dev"
+          mkdir -p "${PKG_DIR}/DEBIAN"
+
+          # Install static libraries
+          cp build/libdynemit.a "${PKG_DIR}/usr/lib/"
+          cp build/src/libdynemit_core.a "${PKG_DIR}/usr/lib/"
+          find build/features -name "*.a" -exec cp {} "${PKG_DIR}/usr/lib/" \;
+
+          # Install development symlinks for shared libraries
+          ln -s libdynemit.so.1 "${PKG_DIR}/usr/lib/libdynemit.so"
+          ln -s libdynemit_core.so.1 "${PKG_DIR}/usr/lib/libdynemit_core.so"
+          for lib in build/features/*/*.so.${{ needs.version.outputs.version }}; do
+            base=$(basename "$lib" .so.${{ needs.version.outputs.version }})
+            ln -s "${base}.so.1" "${PKG_DIR}/usr/lib/${base}.so"
+          done
+
+          # Install headers
+          cp include/dynemit.h "${PKG_DIR}/usr/include/"
+          cp include/dynemit/*.h "${PKG_DIR}/usr/include/dynemit/"
+
+          # Install pkg-config file
+          cp build/libdynemit.pc "${PKG_DIR}/usr/lib/pkgconfig/"
+
+          # Install documentation
+          cp README.md "${PKG_DIR}/usr/share/doc/libdynemit-dev/"
+          cp LICENSE "${PKG_DIR}/usr/share/doc/libdynemit-dev/"
+
+          # Generate control file from template
+          sed "s/{{VERSION}}/${{ needs.version.outputs.version }}/g" \
+            pkg/deb/dev/control > "${PKG_DIR}/DEBIAN/control"
+
+          # Copy copyright
+          cp pkg/deb/common/copyright "${PKG_DIR}/usr/share/doc/libdynemit-dev/"
+
+          # Build package
+          dpkg-deb --build "${PKG_DIR}"
+
+      - name: Verify DEB packages
+        run: |
+          dpkg-deb --info "libdynemit_${{ needs.version.outputs.version }}_amd64.deb"
+          dpkg-deb --info "libdynemit-dev_${{ needs.version.outputs.version }}_amd64.deb"
+
+      - name: Upload DEB artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-packages
+          path: "*.deb"
+
+  rpm:
+    name: Build RPM packages
+    runs-on: ubuntu-latest
+    container: fedora:40
+    needs: version
+
+    steps:
+      - name: Install dependencies
+        run: |
+          dnf install -y \
+            git gcc gcc-c++ cmake \
+            ca-certificates \
+            rpm-build
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build library
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build build -j$(nproc)
+
+      - name: Setup RPM build tree
+        run: |
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          
+          # Copy built libraries
+          mkdir -p ~/rpmbuild/BUILD/build
+          
+          # Shared libraries
+          cp build/libdynemit.so.${{ needs.version.outputs.version }} ~/rpmbuild/BUILD/build/
+          cp build/src/libdynemit_core.so.${{ needs.version.outputs.version }} ~/rpmbuild/BUILD/build/
+          find build/features -name "*.so.${{ needs.version.outputs.version }}" -exec cp {} ~/rpmbuild/BUILD/build/ \;
+          
+          # Static libraries
+          cp build/libdynemit.a ~/rpmbuild/BUILD/build/
+          cp build/src/libdynemit_core.a ~/rpmbuild/BUILD/build/
+          find build/features -name "*.a" -exec cp {} ~/rpmbuild/BUILD/build/ \;
+          
+          # Headers
+          mkdir -p ~/rpmbuild/BUILD/include/dynemit
+          cp include/dynemit.h ~/rpmbuild/BUILD/include/
+          cp include/dynemit/*.h ~/rpmbuild/BUILD/include/dynemit/
+          
+          # pkg-config
+          cp build/libdynemit.pc ~/rpmbuild/BUILD/
+          
+          # Documentation
+          cp LICENSE README.md ~/rpmbuild/BUILD/
+
+      - name: Build RPM packages
+        run: |
+          rpmbuild -bb \
+            --define "version ${{ needs.version.outputs.version }}" \
+            --define "release 1" \
+            --define "_topdir $HOME/rpmbuild" \
+            --buildroot "$HOME/rpmbuild/BUILDROOT/libdynemit-${{ needs.version.outputs.version }}-1.x86_64" \
+            pkg/rpm/libdynemit.spec
+
+      - name: Copy RPM to workspace
+        run: find ~/rpmbuild/RPMS -name '*.rpm' -exec cp {} . \;
+
+      - name: Upload RPM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-packages
+          path: "*.rpm"

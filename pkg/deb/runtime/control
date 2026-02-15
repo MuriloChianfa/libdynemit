@@ -1,0 +1,15 @@
+Package: libdynemit
+Version: {{VERSION}}
+Architecture: amd64
+Maintainer: MuriloChianfa <murilo.chianfa@outlook.com>
+Depends: libc6 (>= 2.34)
+Section: libs
+Priority: optional
+Homepage: https://github.com/MuriloChianfa/libdynemit
+Description: SIMD dynamic dispatch library - runtime
+ libdynemit provides automatic SIMD runtime dispatch using ifunc resolvers.
+ Write portable code that automatically uses the best SIMD instructions
+ (SSE2, SSE4.2, AVX, AVX2, AVX-512F) available on the target CPU.
+ .
+ This package contains the shared libraries needed to run applications
+ that use libdynemit.
