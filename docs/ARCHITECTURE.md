@@ -87,9 +87,9 @@ This is required by all feature libraries and applications.
 
 ## Runtime Dispatch Mechanism
 
-### GCC ifunc Attribute
+### ifunc Attribute
 
-Each feature uses GCC's `ifunc` (indirect function) attribute:
+Each feature uses the `ifunc` (indirect function) attribute, supported by both GCC and Clang on Linux/ELF targets:
 
 ```c
 // Resolver runs once at program load
@@ -238,11 +238,16 @@ Every SIMD feature follows this pattern:
 #include <immintrin.h>
 #include <stddef.h>
 #include <dynemit/core.h>
+#include <dynemit/compiler.h>
 
 // 2. Scalar fallback
 __attribute__((target("default")))
-__attribute__((optimize("no-tree-vectorize")))
-static void feature_scalar(...) { /* ... */ }
+DYNEMIT_NO_AUTOVECTORIZE
+static void feature_scalar(...)
+{
+    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+    /* ... */
+}
 
 // 3. SIMD implementations (SSE2, SSE4.2, AVX, AVX2, AVX-512F)
 __attribute__((target("sse2")))
@@ -346,12 +351,12 @@ On non-x86 systems:
 ### Compiler Requirements
 
 **Required:**
-- GCC with `ifunc` support
+- GCC 13+ or Clang 16+ with `ifunc` support (Linux/ELF targets)
 - x86-64 target for SIMD optimizations
 
 **Not supported:**
-- Clang (no `ifunc` support)
 - MSVC (different intrinsics model)
+- macOS/non-ELF platforms (no `ifunc` support)
 
 ## Future Enhancements
 
@@ -373,6 +378,7 @@ The current architecture scales well up to ~10-20 features. Beyond that, conside
 ## References
 
 - [GCC Function Attributes](https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html)
+- [Clang Attributes Reference](https://clang.llvm.org/docs/AttributeReference.html)
 - [Intel Intrinsics Guide](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html)
 - [CMake Object Libraries](https://cmake.org/cmake/help/latest/command/add_library.html#object-libraries)
 - [CPUID Specification](https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-vol-2a-manual.html)

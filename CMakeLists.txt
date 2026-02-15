@@ -29,14 +29,17 @@ endif()
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Require GCC compiler
-if(NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    message(FATAL_ERROR "This project requires GCC compiler. Found: ${CMAKE_C_COMPILER_ID}")
-endif()
-
-# Require GCC 13+ for C23 support
-if(CMAKE_C_COMPILER_VERSION VERSION_LESS "13.0")
-    message(FATAL_ERROR "GCC 13 or newer is required for C23 support. Found: ${CMAKE_C_COMPILER_VERSION}")
+# Require GCC 13+ or Clang 16+
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_C_COMPILER_VERSION VERSION_LESS "13.0")
+        message(FATAL_ERROR "GCC 13+ required for C23 support. Found: ${CMAKE_C_COMPILER_VERSION}")
+    endif()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    if(CMAKE_C_COMPILER_VERSION VERSION_LESS "16.0")
+        message(FATAL_ERROR "Clang 16+ required for C23 support. Found: ${CMAKE_C_COMPILER_VERSION}")
+    endif()
+else()
+    message(FATAL_ERROR "GCC 13+ or Clang 16+ required. Found: ${CMAKE_C_COMPILER_ID}")
 endif()
 
 # Default build type to Release if not specified

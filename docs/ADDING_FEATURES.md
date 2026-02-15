@@ -7,7 +7,7 @@ This guide explains how to add new SIMD-optimized features to the dynemit librar
 The dynemit library uses a modular architecture where each feature:
 - Has its own directory under `features/`
 - Provides multiple SIMD implementations (scalar, SSE2, SSE4.2, AVX, AVX2, AVX-512F)
-- Uses GCC's `ifunc` mechanism for runtime dispatch
+- Uses the `ifunc` mechanism (GCC and Clang) for runtime dispatch
 - Can be built as both an individual library and part of the all-in-one bundle
 
 ## Quick Start
@@ -38,13 +38,15 @@ Create `features/my_feature/my_feature.c`:
 #include <immintrin.h>
 #include <stddef.h>
 #include <dynemit/core.h>
+#include <dynemit/compiler.h>
 
 // Scalar version - disable auto-vectorization
 __attribute__((target("default")))
-__attribute__((optimize("no-tree-vectorize")))
+DYNEMIT_NO_AUTOVECTORIZE
 static void
 my_feature_f32_scalar(const float *a, const float *b, float *out, size_t n)
 {
+    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++)
         out[i] = /* your operation here */;
 }
@@ -402,7 +404,7 @@ find . -name "libdynemit_my_feature.a"
 
 4. **Test correctness** - Verify your SIMD implementation matches scalar behavior
 
-5. **Disable auto-vectorization for scalar** - Use `__attribute__((optimize("no-tree-vectorize")))` on scalar version
+5. **Disable auto-vectorization for scalar** - Use the `DYNEMIT_NO_AUTOVECTORIZE` macro and `DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN` from `<dynemit/compiler.h>` on scalar versions (works on both GCC and Clang)
 
 6. **Use appropriate SIMD levels** - AVX2 may not provide benefits over AVX for all operations
 
@@ -451,4 +453,5 @@ Verify feature is registered:
 
 - [Intel Intrinsics Guide](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html)
 - [GCC documentation on ifunc](https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html)
+- [Clang Attributes Reference](https://clang.llvm.org/docs/AttributeReference.html)
 - [Agner Fog's optimization manuals](https://www.agner.org/optimize/)

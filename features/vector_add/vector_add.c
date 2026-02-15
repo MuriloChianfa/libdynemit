@@ -2,13 +2,15 @@
 #include <immintrin.h>
 #include <stddef.h>
 #include <dynemit/core.h>
+#include <dynemit/compiler.h>
 
 // Scalar version - disable auto-vectorization to get true scalar code
 __attribute__((target("default")))
-__attribute__((optimize("no-tree-vectorize")))
+DYNEMIT_NO_AUTOVECTORIZE
 static void
 vector_add_f32_scalar(const float *a, const float *b, float *out, size_t n)
 {
+    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++)
         out[i] = a[i] + b[i];
 }

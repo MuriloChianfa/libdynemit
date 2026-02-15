@@ -4,7 +4,7 @@ This document explains how to use libdynemit's IFUNC resolver utilities safely, 
 
 ## The Problem
 
-GNU IFUNC (Indirect Functions) enables runtime function dispatch based on CPU features. This is how libdynemit automatically selects optimal SIMD implementations. However, IFUNC has a subtle issue with `dlopen()`:
+GNU IFUNC (Indirect Functions) enables runtime function dispatch based on CPU features. This is how libdynemit automatically selects optimal SIMD implementations. IFUNC is supported by both GCC and Clang on Linux/ELF targets. However, IFUNC has a subtle issue with `dlopen()`:
 
 **IFUNC resolvers run during ELF relocation**, which happens during `dlopen()`. In some contexts (especially Python's dynamic module loading with `RTLD_LOCAL`), resolvers may execute before the library is fully initialized, leading to:
 
@@ -180,9 +180,20 @@ Key properties:
 - `__builtin_trap()` causes immediate, debuggable crash if NULL
 - You write the logic in `name_impl`, the macro provides the wrapper
 
+## Compiler Compatibility
+
+The IFUNC resolver mechanism is supported by both GCC and Clang:
+
+- **GCC**: Full `ifunc` support on Linux/ELF targets.
+- **Clang**: `ifunc` support since Clang 4.0 on Linux/ELF targets.
+- **macOS/non-ELF**: Not supported by either compiler (ELF-only feature).
+
+The `#pragma GCC diagnostic` directives used to suppress `-Wpedantic` warnings are also accepted by Clang (Clang treats them as aliases).
+
 ## References
 
 - [GNU IFUNC Documentation](https://sourceware.org/glibc/wiki/GNU_IFUNC)
 - [dlopen Man Page](https://man7.org/linux/man-pages/man3/dlopen.3.html)
 - [C11 Atomics](https://en.cppreference.com/w/c/atomic)
 - [GCC Function Attributes](https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html)
+- [Clang Attributes Reference](https://clang.llvm.org/docs/AttributeReference.html)

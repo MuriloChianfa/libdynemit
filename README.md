@@ -5,11 +5,12 @@
 [![C23](https://img.shields.io/badge/std-C23-blue.svg)](https://en.cppreference.com/w/c/23)
 [![CMake](https://img.shields.io/badge/CMake-3.16+-green.svg)](https://cmake.org/)
 [![GCC](https://img.shields.io/badge/GCC-13%2B-green.svg)](https://gcc.gnu.org/)
+[![Clang](https://img.shields.io/badge/Clang-16%2B-green.svg)](https://clang.llvm.org/)
 [![License: Boost](https://img.shields.io/badge/License-Boost_1.0-lightblue.svg)](https://www.boost.org/LICENSE_1_0.txt)
 
 > **Write once, run efficiently everywhere without pain.**
 
-libdynemit leverages GCC's ifunc resolver to automatically select optimal SIMD implementations at program startup, delivering portable code without sacrificing performance. Thread-safe SIMD detection and dlopen-safe resolver utilities ensure robust operation in multi-threaded applications and dynamic library loading scenarios.
+libdynemit leverages the ifunc resolver (supported by both GCC and Clang on Linux) to automatically select optimal SIMD implementations at program startup, delivering portable code without sacrificing performance. Thread-safe SIMD detection and dlopen-safe resolver utilities ensure robust operation in multi-threaded applications and dynamic library loading scenarios.
 
 </div>
 
@@ -44,9 +45,6 @@ sudo apt update
 
 # Install GCC 13+ and CMake
 sudo apt install -y gcc-13 cmake
-
-# Set GCC 13 as default (optional)
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100
 
 # Verify installation
 gcc --version
@@ -316,7 +314,7 @@ simd_level_t level = detect_simd_level_ts();
 
 ### 2. Multiple SIMD Implementations
 
-Each SIMD level has its own implementation compiled with appropriate GCC target attributes:
+Each SIMD level has its own implementation compiled with appropriate target attributes:
 
 ```c
 __attribute__((target("avx2")))
@@ -328,7 +326,7 @@ static void vector_mul_f32_avx2(const float *a, const float *b, float *out, size
 
 ### 3. Runtime Dispatch with ifunc
 
-The `vector_mul_f32()` function uses GCC's ifunc attribute to resolve to the optimal implementation:
+The `vector_mul_f32()` function uses the ifunc attribute to resolve to the optimal implementation:
 
 ```c
 vector_mul_f32_func_t vector_mul_f32_resolver(void)
@@ -401,6 +399,7 @@ libdynemit/
 │   ├── dynemit.h           # Umbrella header (includes all features)
 │   └── dynemit/
 │       ├── core.h          # CPU detection API
+│       ├── compiler.h      # Compiler portability macros (GCC/Clang)
 │       ├── vector_add.h    # Vector addition feature
 │       ├── vector_mul.h    # Vector multiplication feature
 │       └── ... and more
@@ -620,4 +619,5 @@ See [LICENSE](LICENSE) file for details.
 - [Intel Intrinsics Guide](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html)
 - [GCC Function Multi-versioning](https://gcc.gnu.org/onlinedocs/gcc/Function-Multiversioning.html)
 - [GCC ifunc Attribute](https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-ifunc-function-attribute)
+- [Clang Attributes Reference](https://clang.llvm.org/docs/AttributeReference.html)
 - [x86 CPUID Instruction](https://en.wikipedia.org/wiki/CPUID)

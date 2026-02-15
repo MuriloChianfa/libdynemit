@@ -89,6 +89,96 @@ jobs:
         cd build
         ctest --output-on-failure --verbose -R "^test_cpp_"
 
+  build-and-test-c-clang:
+    name: C Tests (Clang ${{ matrix.clang-version }}, ${{ matrix.build-type }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        clang-version: [16, 17, 18, 19, 20, 21]
+        build-type: [Debug, Release]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Clang ${{ matrix.clang-version }}
+      run: |
+        sudo apt update
+        sudo apt install -y clang-${{ matrix.clang-version }} lld-${{ matrix.clang-version }}
+
+    - name: Install CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.25.x'
+
+    - name: Verify Clang version
+      run: |
+        clang-${{ matrix.clang-version }} --version
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
+          -DCMAKE_C_COMPILER=clang-${{ matrix.clang-version }} \
+          -DCMAKE_CXX_COMPILER=clang++-${{ matrix.clang-version }}
+
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build-type }} -j$(nproc)
+
+    - name: Run C tests
+      run: |
+        cd build
+        ctest --output-on-failure --verbose -R "^test_(features|vector_ops|thread_safe_detection|resolver_macro)$"
+
+    - name: Run benchmarks
+      if: matrix.build-type == 'Release'
+      run: |
+        cd build/bench
+        ./benchmark_vector_mul || true
+
+  build-and-test-cpp-clang:
+    name: C++ Tests (Clang ${{ matrix.clang-version }}, ${{ matrix.build-type }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        clang-version: [16, 17, 18, 19, 20, 21]
+        build-type: [Debug, Release]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Clang ${{ matrix.clang-version }}
+      run: |
+        sudo apt update
+        sudo apt install -y clang-${{ matrix.clang-version }} lld-${{ matrix.clang-version }}
+
+    - name: Install CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.25.x'
+
+    - name: Verify Clang version
+      run: |
+        clang++-${{ matrix.clang-version }} --version
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
+          -DCMAKE_C_COMPILER=clang-${{ matrix.clang-version }} \
+          -DCMAKE_CXX_COMPILER=clang++-${{ matrix.clang-version }}
+
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build-type }} -j$(nproc)
+
+    - name: Run C++ tests
+      run: |
+        cd build
+        ctest --output-on-failure --verbose -R "^test_cpp_"
+
   code-quality:
     name: Code Quality Checks
     runs-on: ubuntu-latest
