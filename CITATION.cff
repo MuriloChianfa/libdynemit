@@ -1,0 +1,44 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "libdynemit"
+abstract: "A high-performance SIMD library that leverages ifunc resolvers for automatic runtime dispatch. Write once, run efficiently everywhere without pain. Supports SSE2, SSE4.2, AVX, AVX2, and AVX-512F instruction sets with automatic CPU feature detection."
+authors:
+  - family-names: "Chianfa"
+    given-names: "Murilo"
+    email: "murilo.chianfa@outlook.com"
+    orcid: ""
+repository-code: "https://github.com/MuriloChianfa/libdynemit"
+url: "https://github.com/MuriloChianfa/libdynemit"
+license: "BSL-1.0"
+license-url: "https://www.boost.org/LICENSE_1_0.txt"
+version: "1.0.0"
+date-released: "2026-01-10"
+keywords:
+  - SIMD
+  - AVX-512
+  - AVX2
+  - AVX
+  - SSE4.2
+  - SSE2
+  - ifunc
+  - runtime-dispatch
+  - performance
+  - dynamic-dispatch
+  - vectorization
+  - CPU-detection
+  - intrinsics
+  - high-performance-computing
+  - optimization
+  - C23
+  - GCC
+  - Clang
+preferred-citation:
+  type: software
+  title: "libdynemit: SIMD Dynamic Dispatch Library"
+  authors:
+    - family-names: "Chianfa"
+      given-names: "Murilo"
+      email: "murilo.chianfa@outlook.com"
+  year: 2026
+  url: "https://github.com/MuriloChianfa/libdynemit"

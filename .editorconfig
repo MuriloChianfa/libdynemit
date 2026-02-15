@@ -1,0 +1,70 @@
+# EditorConfig helps maintain consistent coding styles across different editors
+# and IDEs for the libdynemit project
+# See: https://editorconfig.org
+
+root = true
+
+# Default settings for all files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C/C++ source files
+[*.{c,h,cpp,hpp}]
+indent_style = tab
+indent_size = 4
+max_line_length = 120
+
+# CMake files
+[CMakeLists.txt]
+indent_style = space
+indent_size = 2
+
+[*.cmake]
+indent_style = space
+indent_size = 2
+
+# Shell scripts
+[*.{sh,bash}]
+indent_style = space
+indent_size = 4
+
+# Makefiles require tabs
+[{Makefile,*.mk}]
+indent_style = tab
+indent_size = 4
+
+# YAML files (GitHub Actions, CI/CD)
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# JSON files
+[*.json]
+indent_style = space
+indent_size = 2
+
+# Markdown files
+[*.md]
+indent_style = space
+indent_size = 2
+max_line_length = 0
+trim_trailing_whitespace = false
+
+# Python files (for scripts)
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# Git configuration
+[.git*]
+indent_style = space
+indent_size = 2
+
+# CFF (Citation File Format)
+[*.cff]
+indent_style = space
+indent_size = 2

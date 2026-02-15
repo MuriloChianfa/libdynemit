@@ -95,7 +95,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        clang-version: [16, 17, 18, 19, 20, 21]
+        clang-version: [16, 17, 18, 19, 20]
         build-type: [Debug, Release]
 
     steps:
@@ -143,7 +143,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        clang-version: [16, 17, 18, 19, 20, 21]
+        clang-version: [16, 17, 18, 19, 20]
         build-type: [Debug, Release]
 
     steps:

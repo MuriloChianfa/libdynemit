@@ -1,0 +1,35 @@
+core:
+  - changed-files:
+      - any-glob-to-any-file: ['src/**', 'include/dynemit/core.h', 'include/dynemit/err.h', 'include/dynemit/compiler.h']
+
+features:
+  - changed-files:
+      - any-glob-to-any-file: ['features/**']
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: ['tests/**']
+
+benchmarks:
+  - changed-files:
+      - any-glob-to-any-file: ['bench/**']
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: ['**/*.md', 'docs/**']
+
+ci/cd:
+  - changed-files:
+      - any-glob-to-any-file: ['.github/**']
+
+build:
+  - changed-files:
+      - any-glob-to-any-file: ['CMakeLists.txt', '**/CMakeLists.txt']
+
+scripts:
+  - changed-files:
+      - any-glob-to-any-file: ['scripts/**']
+
+security:
+  - changed-files:
+      - any-glob-to-any-file: ['.github/SECURITY.md', '.github/workflows/codeql.yml']

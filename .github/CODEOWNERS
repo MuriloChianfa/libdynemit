@@ -1,0 +1,33 @@
+# Default owner for everything in the repository
+* @MuriloChianfa
+
+# Core library (CPU detection, SIMD levels)
+/src/ @MuriloChianfa
+/include/dynemit/core.h @MuriloChianfa
+/include/dynemit/err.h @MuriloChianfa
+/include/dynemit/compiler.h @MuriloChianfa
+
+# SIMD features
+/features/ @MuriloChianfa
+
+# Public headers
+/include/ @MuriloChianfa
+
+# Tests
+/tests/ @MuriloChianfa
+
+# Benchmarks
+/bench/ @MuriloChianfa
+
+# Documentation
+/docs/ @MuriloChianfa
+README.md @MuriloChianfa
+
+# CI/CD and GitHub configuration
+/.github/ @MuriloChianfa
+
+# Build system
+CMakeLists.txt @MuriloChianfa
+
+# Scripts
+/scripts/ @MuriloChianfa

@@ -170,8 +170,8 @@ int main(void)
     if (failures == 0) {
         printf("All tests passed!\n");
         return 0;
-    } else {
-        printf("%d test(s) failed!\n", failures);
-        return 1;
     }
+
+    printf("%d test(s) failed!\n", failures);
+    return 1;
 }
