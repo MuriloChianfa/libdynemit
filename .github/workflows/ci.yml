@@ -43,12 +43,6 @@ jobs:
         cd build
         ctest --output-on-failure --verbose -R "^test_(features|vector_ops|thread_safe_detection|resolver_macro)$"
     
-    - name: Run benchmarks
-      if: matrix.build-type == 'Release'
-      run: |
-        cd build/bench
-        ./benchmark_vector_mul || true
-    
     - name: List features
       run: |
         cmake -B build-list -DLIST_FEATURES=ON || true
@@ -130,12 +124,6 @@ jobs:
       run: |
         cd build
         ctest --output-on-failure --verbose -R "^test_(features|vector_ops|thread_safe_detection|resolver_macro)$"
-
-    - name: Run benchmarks
-      if: matrix.build-type == 'Release'
-      run: |
-        cd build/bench
-        ./benchmark_vector_mul || true
 
   build-and-test-cpp-clang:
     name: C++ Tests (Clang ${{ matrix.clang-version }}, ${{ matrix.build-type }})

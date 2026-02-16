@@ -35,22 +35,18 @@ Features:
 - C23 and C++17+ compatible
 
 %install
-# Install shared libraries (runtime) and create SONAME symlinks
+# Install shared library (runtime) - all-in-one library only
 mkdir -p %{buildroot}%{_libdir}
-find %{_builddir}/build -name "libdynemit*.so.%{version}" -exec cp -P {} %{buildroot}%{_libdir}/ \;
-for lib in %{buildroot}%{_libdir}/*.so.%{version}; do
-    base=$(basename "$lib" .so.%{version})
-    ln -s "${base}.so.%{version}" "%{buildroot}%{_libdir}/${base}.so.1"
-done
+cp %{_builddir}/build/libdynemit.so.%{version} %{buildroot}%{_libdir}/
+ln -s libdynemit.so.%{version} %{buildroot}%{_libdir}/libdynemit.so.1
 
-# Install static libraries (devel)
-find %{_builddir}/build -name "libdynemit*.a" -exec cp -P {} %{buildroot}%{_libdir}/ \;
+# Install all static libraries (devel) - all-in-one, core, and features
+cp %{_builddir}/build/libdynemit.a %{buildroot}%{_libdir}/
+cp %{_builddir}/build/libdynemit_core.a %{buildroot}%{_libdir}/
+cp %{_builddir}/build/libdynemit_*.a %{buildroot}%{_libdir}/
 
-# Install development symlinks for shared libraries
-for lib in %{buildroot}%{_libdir}/*.so.1; do
-    base=$(basename "$lib" .so.1)
-    ln -s "${base}.so.1" "%{buildroot}%{_libdir}/${base}.so"
-done
+# Install development symlink for shared library
+ln -s libdynemit.so.1 %{buildroot}%{_libdir}/libdynemit.so
 
 # Install headers
 mkdir -p %{buildroot}%{_includedir}/dynemit
@@ -70,18 +66,22 @@ install -D -m 0644 %{_builddir}/README.md \
 %files
 %license %{_defaultdocdir}/%{name}/LICENSE
 %doc %{_defaultdocdir}/%{name}/README.md
-%{_libdir}/libdynemit*.so.%{version}
-%{_libdir}/libdynemit*.so.1
+%{_libdir}/libdynemit.so.%{version}
+%{_libdir}/libdynemit.so.1
 
 %files devel
-%{_libdir}/libdynemit*.so
+%{_libdir}/libdynemit.so
 %{_libdir}/libdynemit*.a
 %{_includedir}/dynemit.h
 %{_includedir}/dynemit/
 %{_libdir}/pkgconfig/libdynemit.pc
 
 %changelog
-* Sat Feb 15 2026 MuriloChianfa <murilo.chianfa@outlook.com> - 1.0.0-1
+* Sun Feb 15 2026 MuriloChianfa <murilo.chianfa@outlook.com> - 1.1.0-1
+- Version 1.1.0 release
+- Updated to latest stable version
+
+* Sat Jan 10 2026 MuriloChianfa <murilo.chianfa@outlook.com> - 1.0.0-1
 - Initial RPM package
 - Both shared and static libraries
 - Runtime and development packages

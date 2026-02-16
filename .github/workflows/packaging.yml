@@ -30,7 +30,7 @@ jobs:
 
   deb:
     name: Build DEB packages
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: version
 
     steps:
@@ -38,7 +38,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            gcc-13 g++-13 cmake \
+            gcc g++ cmake \
             dpkg-dev fakeroot
 
       - name: Checkout
@@ -48,8 +48,6 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc-13 \
-            -DCMAKE_CXX_COMPILER=g++-13 \
             -DCMAKE_INSTALL_PREFIX=/usr
           cmake --build build -j$(nproc)
 
@@ -60,18 +58,9 @@ jobs:
           mkdir -p "${PKG_DIR}/usr/share/doc/libdynemit"
           mkdir -p "${PKG_DIR}/DEBIAN"
 
-          # Install shared libraries (runtime)
+          # Install shared library (runtime) - all-in-one library only
           cp build/libdynemit.so.${{ needs.version.outputs.version }} "${PKG_DIR}/usr/lib/"
           ln -s libdynemit.so.${{ needs.version.outputs.version }} "${PKG_DIR}/usr/lib/libdynemit.so.1"
-          
-          cp build/src/libdynemit_core.so.${{ needs.version.outputs.version }} "${PKG_DIR}/usr/lib/"
-          ln -s libdynemit_core.so.${{ needs.version.outputs.version }} "${PKG_DIR}/usr/lib/libdynemit_core.so.1"
-          
-          find build/features -name "*.so.${{ needs.version.outputs.version }}" -exec cp {} "${PKG_DIR}/usr/lib/" \;
-          for lib in "${PKG_DIR}"/usr/lib/*.so.${{ needs.version.outputs.version }}; do
-            base=$(basename "$lib" .so.${{ needs.version.outputs.version }})
-            ln -s "$(basename $lib)" "${PKG_DIR}/usr/lib/${base}.so.1"
-          done
 
           # Install documentation
           cp README.md "${PKG_DIR}/usr/share/doc/libdynemit/"
@@ -96,18 +85,13 @@ jobs:
           mkdir -p "${PKG_DIR}/usr/share/doc/libdynemit-dev"
           mkdir -p "${PKG_DIR}/DEBIAN"
 
-          # Install static libraries
+          # Install all static libraries (all-in-one, core, and features)
           cp build/libdynemit.a "${PKG_DIR}/usr/lib/"
           cp build/src/libdynemit_core.a "${PKG_DIR}/usr/lib/"
           find build/features -name "*.a" -exec cp {} "${PKG_DIR}/usr/lib/" \;
 
-          # Install development symlinks for shared libraries
+          # Install development symlink for shared library
           ln -s libdynemit.so.1 "${PKG_DIR}/usr/lib/libdynemit.so"
-          ln -s libdynemit_core.so.1 "${PKG_DIR}/usr/lib/libdynemit_core.so"
-          for lib in build/features/*/*.so.${{ needs.version.outputs.version }}; do
-            base=$(basename "$lib" .so.${{ needs.version.outputs.version }})
-            ln -s "${base}.so.1" "${PKG_DIR}/usr/lib/${base}.so"
-          done
 
           # Install headers
           cp include/dynemit.h "${PKG_DIR}/usr/include/"
@@ -172,12 +156,10 @@ jobs:
           # Copy built libraries
           mkdir -p ~/rpmbuild/BUILD/build
           
-          # Shared libraries
+          # Shared library (all-in-one only)
           cp build/libdynemit.so.${{ needs.version.outputs.version }} ~/rpmbuild/BUILD/build/
-          cp build/src/libdynemit_core.so.${{ needs.version.outputs.version }} ~/rpmbuild/BUILD/build/
-          find build/features -name "*.so.${{ needs.version.outputs.version }}" -exec cp {} ~/rpmbuild/BUILD/build/ \;
           
-          # Static libraries
+          # All static libraries (all-in-one, core, and features)
           cp build/libdynemit.a ~/rpmbuild/BUILD/build/
           cp build/src/libdynemit_core.a ~/rpmbuild/BUILD/build/
           find build/features -name "*.a" -exec cp {} ~/rpmbuild/BUILD/build/ \;

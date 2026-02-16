@@ -32,6 +32,94 @@ vector_mul_f32(a, b, result, n);
 ![SIMD Feature Comparison](docs/img/benchmark_vector_mul_feature_compare.png)
 *Performance scaling comparison of different SIMD instruction sets on the same CPU (AMD Ryzen 9 9950X3D). This benchmark demonstrates the progressive performance improvements from Scalar → SSE2 → SSE4.2 → AVX → AVX2 → AVX-512F. Each implementation was built and tested separately to isolate the impact of each SIMD level. The chart shows ~1.8x speedup from AVX-512F compared to scalar code for large arrays. Lower execution time indicates better performance. Each data point represents the median of 10 trials, with error bars showing ±1 standard deviation.*
 
+## Installation
+
+### Option 1: Pre-built Packages
+
+Download pre-built packages from [GitHub Releases](https://github.com/MuriloChianfa/libdynemit/releases).
+
+<details open>
+<summary><b>Debian/Ubuntu</b></summary>
+
+```bash
+wget https://github.com/MuriloChianfa/libdynemit/releases/download/v1.1.0/libdynemit_1.1.0_amd64.deb
+sudo dpkg -i libdynemit_1.1.0_amd64.deb
+```
+
+</details>
+
+<details>
+<summary><b>Fedora/RHEL</b></summary>
+
+**Runtime package**:
+
+```bash
+wget https://github.com/MuriloChianfa/libdynemit/releases/download/v1.1.0/libdynemit-1.1.0-1.fc40.x86_64.rpm
+sudo dnf install libdynemit-1.1.0-1.fc40.x86_64.rpm
+```
+
+</details>
+
+#### Verify GPG Signatures
+
+All packages are cryptographically signed with GPG for authenticity verification.
+
+**Import the maintainer's public key:**
+
+```bash
+gpg --keyserver keys.openpgp.org --recv-keys 3E1A1F401A1C47BC77D1705612D0D82387FC53B0
+```
+
+<details>
+<summary><b>Alternative key import options</b></summary>
+
+Using the shorter key ID:
+
+```bash
+gpg --keyserver keys.openpgp.org --recv-keys 12D0D82387FC53B0
+```
+
+**Alternative keyserver** (if `keys.openpgp.org` is unavailable):
+
+```bash
+gpg --keyserver hkp://keyserver.ubuntu.com --recv-keys 3E1A1F401A1C47BC77D1705612D0D82387FC53B0
+```
+
+</details>
+
+You should see output confirming the key was imported:
+```
+gpg: key 12D0D82387FC53B0: public key "MuriloChianfa <murilo.chianfa@outlook.com>" imported
+gpg: Total number processed: 1
+gpg:               imported: 1
+```
+
+**Verify a package signature:**
+
+```bash
+gpg --verify libdynemit_1.1.0_amd64.deb.asc libdynemit_1.1.0_amd64.deb
+```
+
+If the signature is valid, you should see:
+```
+gpg: Signature made [date and time]
+gpg:                using EDDSA key 3E1A1F401A1C47BC77D1705612D0D82387FC53B0
+gpg: Good signature from "MuriloChianfa <murilo.chianfa@outlook.com>"
+```
+
+If you see "BAD signature", **do not use** the binary - it may have been tampered with or corrupted.
+
+#### Verify Checksums
+
+```bash
+curl -LO https://github.com/MuriloChianfa/libdynemit/releases/download/v1.1.0/SHA256SUMS
+curl -LO https://github.com/MuriloChianfa/libdynemit/releases/download/v1.1.0/SHA256SUMS.asc
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+### Option 2: Build from Source
+
 ## Requirements
 
 <details open>
@@ -70,6 +158,7 @@ sudo pacman -S gcc cmake
 
 </details>
 
+
 ## Build Instructions
 
 ```bash
@@ -85,10 +174,11 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 make
 ```
 
-## Installation
+### Installing from Source
+
+After building, install the library and headers system-wide:
 
 ```bash
-# Install library and headers
 cd build
 sudo make install
 ```
@@ -96,12 +186,17 @@ sudo make install
 <details>
 <summary>View installed files</summary>
 
-**Libraries** (6 options available):
+**Shared library**:
+- `/usr/local/lib/libdynemit.so.1.1.0` (versioned shared library)
+- `/usr/local/lib/libdynemit.so.1` (SONAME symlink)
+- `/usr/local/lib/libdynemit.so` (development symlink)
+
+**Static libraries**:
 - `/usr/local/lib/libdynemit.a` (all-in-one, includes all features)
 - `/usr/local/lib/libdynemit_core.a` (just CPU detection)
 - `/usr/local/lib/libdynemit_vector_add.a` (single feature)
 - `/usr/local/lib/libdynemit_vector_mul.a` (single feature)
-- ... and more
+- `/usr/local/lib/libdynemit_vector_sub.a` (single feature)
 
 **Headers:**
 - `/usr/local/include/dynemit.h` (umbrella header)
@@ -109,7 +204,10 @@ sudo make install
 - `/usr/local/include/dynemit/err.h` (safe IFUNC resolver utilities)
 - `/usr/local/include/dynemit/vector_add.h`
 - `/usr/local/include/dynemit/vector_mul.h`
-- ... and more
+- `/usr/local/include/dynemit/vector_sub.h`
+
+**Build system support:**
+- `/usr/local/lib/pkgconfig/libdynemit.pc` (pkg-config file)
 
 </details>
 
@@ -546,59 +644,6 @@ Quick summary:
    ```
 5. **Update main CMakeLists.txt**: Add to `dynemit` all-in-one library
 6. **Update umbrella header**: Add `#include <dynemit/your_feature.h>` in `include/dynemit.h`
-
-## Verifying Binary Signatures
-
-libdynemit binaries are cryptographically signed with GPG for authenticity verification. To verify a downloaded binary:
-
-### 1. Import the Public Key
-
-Import the maintainer's public key directly from the keyserver using the key fingerprint:
-
-```bash
-gpg --keyserver keys.openpgp.org --recv-keys 3E1A1F401A1C47BC77D1705612D0D82387FC53B0
-```
-
-<details>
-<summary><b>Alternative options</b></summary>
-
-Using the shorter key ID:
-
-```bash
-gpg --keyserver keys.openpgp.org --recv-keys 12D0D82387FC53B0
-```
-
-**Alternative keyserver** (if `keys.openpgp.org` is unavailable):
-
-```bash
-gpg --keyserver hkp://keyserver.ubuntu.com --recv-keys 3E1A1F401A1C47BC77D1705612D0D82387FC53B0
-```
-
-</details>
-
-You should see output confirming the key was imported:
-```
-gpg: key 12D0D82387FC53B0: public key "MuriloChianfa <murilo.chianfa@outlook.com>" imported
-gpg: Total number processed: 1
-gpg:               imported: 1
-```
-
-### 2. Verify the Signature
-
-Assuming you have downloaded both the binary (`libdynemit.a`) and its signature file (`libdynemit.a.asc`):
-
-```bash
-gpg --verify libdynemit.a.asc libdynemit.a
-```
-
-If the signature is valid, you should see:
-```
-gpg: Signature made [date and time]
-gpg:                using EDDSA key 3E1A1F401A1C47BC77D1705612D0D82387FC53B0
-gpg: Good signature from "MuriloChianfa <murilo.chianfa@outlook.com>"
-```
-
-If you see "BAD signature", **do not use** the binary - it may have been tampered with or corrupted.
 
 ## Contributing
 

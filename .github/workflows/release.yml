@@ -141,7 +141,7 @@ jobs:
           REPO_URL="https://github.com/${{ github.repository }}"
           RELEASE_URL="${REPO_URL}/releases/download/${TAG}"
           
-          cat > release_notes.md << 'RELEASE_NOTES_EOF'
+          cat > release_notes.md << RELEASE_NOTES_EOF
           A high-performance SIMD library that leverages ifunc resolvers for automatic runtime dispatch. Write portable code that automatically uses the best SIMD instructions available on your CPU.
           
           **Key features:**
