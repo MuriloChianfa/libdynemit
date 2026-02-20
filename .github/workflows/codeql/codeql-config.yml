@@ -12,7 +12,15 @@ paths-ignore:
   - docs
   - scripts
   - '**/*.md'
+  - '**/googletest-src/**'
+  - '**/gtest/**'
+  - '**/gmock/**'
+  - '**/build/_deps/**'
 
 queries:
   - uses: security-extended
   - uses: security-and-quality
+
+query-filters:
+  - exclude:
+      id: cpp/unused-static-function

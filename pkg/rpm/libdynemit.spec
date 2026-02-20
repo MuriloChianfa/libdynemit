@@ -77,6 +77,11 @@ install -D -m 0644 %{_builddir}/README.md \
 %{_libdir}/pkgconfig/libdynemit.pc
 
 %changelog
+* Fri Feb 20 2026 MuriloChianfa <murilo.chianfa@outlook.com> - 1.2.0-1
+- Version 1.2.0 release
+- Major refactoring and 18 new feature modules
+- Added coverage and mutation testing CI workflows
+
 * Sun Feb 15 2026 MuriloChianfa <murilo.chianfa@outlook.com> - 1.1.0-1
 - Version 1.1.0 release
 - Updated to latest stable version

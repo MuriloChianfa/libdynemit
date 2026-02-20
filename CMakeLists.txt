@@ -71,8 +71,9 @@ if(DYNEMIT_STATIC_BENCHMARKS)
     message(STATUS "Static benchmarks:  ON")
 endif()
 
-# Core tests (SIMD detection, resolver macros, C++ compatibility)
-add_subdirectory(tests)
+if(DYNEMIT_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
 
 # Create all-in-one STATIC library combining core + all features
 add_library(dynemit_static STATIC
