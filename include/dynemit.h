@@ -19,15 +19,32 @@ extern "C" {
 // Error handling utilities for IFUNC resolvers
 #include <dynemit/err.h>
 
-// All features - include by default for convenience
-// Users can still include individual headers if they prefer
-#include <dynemit/vector_add.h>
-#include <dynemit/vector_mul.h>
-#include <dynemit/vector_sub.h>
+// Element-wise vector operations
+#include <dynemit/add.h>
+#include <dynemit/mul.h>
+#include <dynemit/sub.h>
+
+// Statistical reduction and moment primitives
+#include <dynemit/stats.h>
+
+// Shannon entropy
+#include <dynemit/entropy.h>
+
+// Diversity and concentration indices
+#include <dynemit/simpson.h>
+#include <dynemit/hhi.h>
+#include <dynemit/gini.h>
+
+// Histogram-based range counting
+#include <dynemit/histogram.h>
+
+// Concentration analysis (top-K ratios, Hill estimator, composite)
+#include <dynemit/topk.h>
+#include <dynemit/hill.h>
+#include <dynemit/concentration.h>
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif // DYNEMIT_H
-

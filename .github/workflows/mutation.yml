@@ -1,0 +1,83 @@
+name: Mutation Testing
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  mutation:
+    name: Mutation Testing (Clang 18 + Mull)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Clang 18
+      run: |
+        sudo apt update
+        sudo apt install -y clang-18 lld-18
+
+    - name: Install CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.25.x'
+
+    - name: Install Mull
+      run: |
+        curl -1sLf 'https://dl.cloudsmith.io/public/mull-project/mull-stable/setup.deb.sh' | sudo -E bash
+        sudo apt install -y mull-18
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_C_COMPILER=clang-18 \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DDYNEMIT_MULL=ON
+
+    - name: Build
+      run: cmake --build build -j$(nproc)
+
+    - name: Run mutation tests
+      run: |
+        mkdir -p build/mutation_reports
+        MULL_RUNNER=$(command -v mull-runner-18 || command -v mull-runner)
+        echo "Using Mull runner: ${MULL_RUNNER}"
+        echo ""
+
+        PASS=0
+        FAIL=0
+
+        for test_bin in build/features/*/test_*; do
+          [ -x "$test_bin" ] || continue
+          feature=$(basename "$(dirname "$test_bin")")
+          echo "============================================"
+          echo "Mutating feature: ${feature}"
+          echo "============================================"
+
+          ${MULL_RUNNER} \
+            --reporters=Elements \
+            --report-dir=build/mutation_reports \
+            --report-name="${feature}" \
+            "$test_bin" 2>&1 | tee "build/mutation_reports/${feature}.log" && \
+            PASS=$((PASS + 1)) || \
+            FAIL=$((FAIL + 1))
+
+          echo ""
+        done
+
+        echo "============================================"
+        echo "Mutation testing complete"
+        echo "  Passed: ${PASS}"
+        echo "  Failed: ${FAIL}"
+        echo "============================================"
+
+    - name: Upload mutation reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: mutation-reports
+        path: build/mutation_reports/
+        retention-days: 30

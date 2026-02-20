@@ -1,46 +1,23 @@
 cmake_minimum_required(VERSION 3.16)
 project(simd-dynamic-dispatch
-    VERSION 1.1.0
+    VERSION 1.2.0
     DESCRIPTION "SIMD Dynamic Dispatch Library"
     LANGUAGES C
 )
 
-# Option to list available features
-option(LIST_FEATURES "List available SIMD features and exit" OFF)
+# Optional build modes and cmake modules
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
-if(LIST_FEATURES)
-    message(STATUS "")
-    message(STATUS "=== Available Dynemit Features ===")
-    message(STATUS "  - core              (CPU detection and SIMD level API)")
-    message(STATUS "  - vector_add        (SIMD-optimized vector addition)")
-    message(STATUS "  - vector_mul        (SIMD-optimized vector multiplication)")
-    message(STATUS "  - vector_sub        (SIMD-optimized vector subtraction)")
-    message(STATUS "===================================")
-    message(STATUS "")
-    message(STATUS "Usage modes:")
-    message(STATUS "  1. All-in-one:    Link with -ldynemit (includes all features)")
-    message(STATUS "  2. Modular:       Link with -ldynemit_core -ldynemit_<feature>")
-    message(STATUS "  3. Core only:     Link with -ldynemit_core")
-    message(STATUS "")
-    message(FATAL_ERROR "Feature list displayed. Exiting as requested.")
-endif()
+include(ListFeatures)
+
+# Export compile_commands.json for clangd / IDE tooling
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Set C standard
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Require GCC 13+ or Clang 16+
-if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    if(CMAKE_C_COMPILER_VERSION VERSION_LESS "13.0")
-        message(FATAL_ERROR "GCC 13+ required for C23 support. Found: ${CMAKE_C_COMPILER_VERSION}")
-    endif()
-elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    if(CMAKE_C_COMPILER_VERSION VERSION_LESS "16.0")
-        message(FATAL_ERROR "Clang 16+ required for C23 support. Found: ${CMAKE_C_COMPILER_VERSION}")
-    endif()
-else()
-    message(FATAL_ERROR "GCC 13+ or Clang 16+ required. Found: ${CMAKE_C_COMPILER_ID}")
-endif()
+include(CompilerChecks)
 
 # Default build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE)
@@ -60,8 +37,16 @@ else()
     message(WARNING "Non-x86 architecture detected. SIMD optimizations will be limited.")
 endif()
 
+include(Coverage)
+include(Mull)
+include(Unity)
+include(GTest)
+
 # Add subdirectories for core and features
 add_subdirectory(src)
+
+# Enable testing before features (feature subdirectories define their own tests)
+enable_testing()
 
 # Automatically discover and add all feature subdirectories
 file(GLOB FEATURE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/features/*")
@@ -70,22 +55,30 @@ foreach(FEATURE_DIR ${FEATURE_DIRS})
     if(IS_DIRECTORY ${FEATURE_DIR})
         get_filename_component(FEATURE_NAME ${FEATURE_DIR} NAME)
         add_subdirectory(features/${FEATURE_NAME})
-        # Collect feature object library names
         list(APPEND FEATURE_OBJECTS $<TARGET_OBJECTS:${FEATURE_NAME}_obj>)
     endif()
 endforeach()
 
-add_subdirectory(bench)
+# Optionally statically link all bench_* targets for portable bundles
+option(DYNEMIT_STATIC_BENCHMARKS "Statically link benchmarks" OFF)
+if(DYNEMIT_STATIC_BENCHMARKS)
+    foreach(FEATURE_DIR ${FEATURE_DIRS})
+        get_filename_component(FNAME ${FEATURE_DIR} NAME)
+        if(TARGET bench_${FNAME})
+            target_link_options(bench_${FNAME} PRIVATE -static)
+        endif()
+    endforeach()
+    message(STATUS "Static benchmarks:  ON")
+endif()
 
-# Enable testing
-enable_testing()
+# Core tests (SIMD detection, resolver macros, C++ compatibility)
 add_subdirectory(tests)
 
 # Create all-in-one STATIC library combining core + all features
 add_library(dynemit_static STATIC
     $<TARGET_OBJECTS:dynemit_core_obj>
     ${FEATURE_OBJECTS}
-    src/dynemit_features.c  # Feature list for all-in-one library
+    src/dynemit_features.c
 )
 
 set_target_properties(dynemit_static PROPERTIES
@@ -99,14 +92,13 @@ target_include_directories(dynemit_static
 
 target_link_libraries(dynemit_static PUBLIC m)
 
-# Define DYNEMIT_ALL_FEATURES for users of the all-in-one library
 target_compile_definitions(dynemit_static PUBLIC DYNEMIT_ALL_FEATURES)
 
 # Create all-in-one SHARED library combining core + all features
 add_library(dynemit_shared SHARED
     $<TARGET_OBJECTS:dynemit_core_obj>
     ${FEATURE_OBJECTS}
-    src/dynemit_features.c  # Feature list for all-in-one library
+    src/dynemit_features.c
 )
 
 set_target_properties(dynemit_shared PROPERTIES
@@ -122,37 +114,12 @@ target_include_directories(dynemit_shared
 
 target_link_libraries(dynemit_shared PUBLIC m)
 
-# Define DYNEMIT_ALL_FEATURES for users of the all-in-one library
 target_compile_definitions(dynemit_shared PUBLIC DYNEMIT_ALL_FEATURES)
 
 # Create dynemit alias target for backward compatibility (points to static)
 add_library(dynemit ALIAS dynemit_static)
 
-# Installation rules
-include(GNUInstallDirs)
-
-install(TARGETS dynemit_static dynemit_shared
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Development
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Runtime
-    NAMELINK_COMPONENT Development
-)
-
-install(FILES include/dynemit.h
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    COMPONENT Development
-)
-
-# Configure and install pkg-config file
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/libdynemit.pc.in
-    ${CMAKE_CURRENT_BINARY_DIR}/libdynemit.pc
-    @ONLY
-)
-
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libdynemit.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
-    COMPONENT Development
-)
+include(Install)
 
 # Print configuration summary
 message(STATUS "")

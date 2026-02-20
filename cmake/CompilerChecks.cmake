@@ -1,0 +1,12 @@
+# Require GCC 13+ or Clang 16+
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_C_COMPILER_VERSION VERSION_LESS "13.0")
+        message(FATAL_ERROR "GCC 13+ required for C23 support. Found: ${CMAKE_C_COMPILER_VERSION}")
+    endif()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    if(CMAKE_C_COMPILER_VERSION VERSION_LESS "16.0")
+        message(FATAL_ERROR "Clang 16+ required for C23 support. Found: ${CMAKE_C_COMPILER_VERSION}")
+    endif()
+else()
+    message(FATAL_ERROR "GCC 13+ or Clang 16+ required. Found: ${CMAKE_C_COMPILER_ID}")
+endif()

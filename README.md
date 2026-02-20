@@ -3,6 +3,7 @@
 <h1 align="center">libdynemit</h1>
 
 [![C23](https://img.shields.io/badge/std-C23-blue.svg)](https://en.cppreference.com/w/c/23)
+[![codecov](https://codecov.io/gh/MuriloChianfa/libdynemit/graph/badge.svg)](https://codecov.io/gh/MuriloChianfa/libdynemit)
 [![CMake](https://img.shields.io/badge/CMake-3.16+-green.svg)](https://cmake.org/)
 [![GCC](https://img.shields.io/badge/GCC-13%2B-green.svg)](https://gcc.gnu.org/)
 [![Clang](https://img.shields.io/badge/Clang-16%2B-green.svg)](https://clang.llvm.org/)
@@ -19,7 +20,9 @@ libdynemit leverages the ifunc resolver (supported by both GCC and Clang on Linu
 
 // Automatically uses AVX-512, AVX2, AVX, SSE4.2, SSE2 or scalar,
 // based on your CPU's capabilities, decided once at program startup
-vector_mul_f32(a, b, result, n);
+mul_f32(a, b, result, n);
+mean_f64(data, n);
+entropy_u32(data, n);
 ```
 
 ## Same build, best performance
@@ -194,20 +197,91 @@ sudo make install
 **Static libraries**:
 - `/usr/local/lib/libdynemit.a` (all-in-one, includes all features)
 - `/usr/local/lib/libdynemit_core.a` (just CPU detection)
-- `/usr/local/lib/libdynemit_vector_add.a` (single feature)
-- `/usr/local/lib/libdynemit_vector_mul.a` (single feature)
-- `/usr/local/lib/libdynemit_vector_sub.a` (single feature)
+- `/usr/local/lib/libdynemit_add.a`, `libdynemit_sub.a`, `libdynemit_mul.a` (vector ops)
+- `/usr/local/lib/libdynemit_sum.a`, `libdynemit_mean.a`, `libdynemit_min.a`, `libdynemit_max.a` (basic stats)
+- `/usr/local/lib/libdynemit_variance.a`, `libdynemit_skewness.a`, `libdynemit_kurtosis.a` (moments)
+- `/usr/local/lib/libdynemit_entropy.a`, `libdynemit_simpson.a`, `libdynemit_hhi.a`, `libdynemit_gini.a` (diversity)
+- `/usr/local/lib/libdynemit_histogram.a`, `libdynemit_topk.a`, `libdynemit_hill.a`, `libdynemit_concentration.a` (histogram & concentration)
 
 **Headers:**
 - `/usr/local/include/dynemit.h` (umbrella header)
 - `/usr/local/include/dynemit/core.h` (CPU detection, SIMD levels)
+- `/usr/local/include/dynemit/compiler.h` (compiler portability macros)
 - `/usr/local/include/dynemit/err.h` (safe IFUNC resolver utilities)
-- `/usr/local/include/dynemit/vector_add.h`
-- `/usr/local/include/dynemit/vector_mul.h`
-- `/usr/local/include/dynemit/vector_sub.h`
+- `/usr/local/include/dynemit/add.h`, `sub.h`, `mul.h` (vector ops)
+- `/usr/local/include/dynemit/stats.h` (convenience: includes all statistics headers below)
+- `/usr/local/include/dynemit/sum.h`, `mean.h`, `min.h`, `max.h`, `variance.h`, `skewness.h`, `kurtosis.h`
+- `/usr/local/include/dynemit/entropy.h`, `simpson.h`, `hhi.h`, `gini.h`
+- `/usr/local/include/dynemit/histogram.h`, `topk.h`, `hill.h`, `concentration.h`
 
 **Build system support:**
 - `/usr/local/lib/pkgconfig/libdynemit.pc` (pkg-config file)
+
+</details>
+
+## Features
+
+Currently the library ships SIMD-accelerated features organized into four categories. Every function automatically dispatches to the best available instruction set at program startup.
+
+<details open>
+<summary><b>Vector Operations</b></summary>
+
+Element-wise operations on `float` arrays.
+
+| Function | Description |
+|---|---|
+| `add_f32(a, b, out, n)` | `out[i] = a[i] + b[i]` |
+| `sub_f32(a, b, out, n)` | `out[i] = a[i] - b[i]` |
+| `mul_f32(a, b, out, n)` | `out[i] = a[i] * b[i]` |
+
+Header: `<dynemit/add.h>`, `<dynemit/sub.h>`, `<dynemit/mul.h>`
+
+</details>
+
+<details open>
+<summary><b>Statistical Primitives</b></summary>
+
+| Function | Description |
+|---|---|
+| `sum_f64` / `sum_u64` / `sum_u32` / `sum_u16` | Sum of elements |
+| `mean_f64` / `mean_u64` / `mean_u32` / `mean_u16` | Arithmetic mean |
+| `min_f64` / `min_u64` / `min_u32` / `min_u16` | Minimum value |
+| `max_f64` / `max_u64` / `max_u32` / `max_u16` | Maximum value |
+| `variance_f64` | Sample variance (Bessel's correction) |
+| `skewness_f64` | Third standardized moment |
+| `kurtosis_f64` | Excess kurtosis (fourth moment - 3) |
+
+Headers: `<dynemit/sum.h>`, `<dynemit/mean.h>`, `<dynemit/min.h>`, `<dynemit/max.h>`, `<dynemit/variance.h>`, `<dynemit/skewness.h>`, `<dynemit/kurtosis.h>`
+
+Convenience header `<dynemit/stats.h>` includes all of the above.
+
+</details>
+
+<details open>
+<summary><b>Distribution & Diversity Metrics</b></summary>
+
+| Function | Description |
+|---|---|
+| `entropy_u16` / `entropy_u32` / `entropy_histogram` | Shannon entropy (bits) |
+| `simpson_u16` / `simpson_u32` / `simpson_histogram` | Simpson's diversity index |
+| `hhi_u16` / `hhi_u32` / `hhi_histogram` | Herfindahl-Hirschman Index |
+| `gini_f64` / `gini_u64` | Gini coefficient (requires sorted input) |
+
+Headers: `<dynemit/entropy.h>`, `<dynemit/simpson.h>`, `<dynemit/hhi.h>`, `<dynemit/gini.h>`
+
+</details>
+
+<details>
+<summary><b>Histogram & Concentration Analysis</b></summary>
+
+| Function | Description |
+|---|---|
+| `histogram_u16` / `histogram_u64` | Count elements into boundary-defined bins |
+| `topk_ratios_f64` | Top-K concentration ratios from sorted descending counts |
+| `hill_estimator_f64` | Hill heavy-tail index estimator |
+| `concentration_f64` | Composite metric combining top-K, Hill, and HHI |
+
+Headers: `<dynemit/histogram.h>`, `<dynemit/topk.h>`, `<dynemit/hill.h>`, `<dynemit/concentration.h>`
 
 </details>
 
@@ -224,7 +298,6 @@ Use the bundled library that includes all features:
 #include <dynemit.h>  // Includes core + all features
 
 int main(void) {
-    // Query available features at runtime
     const char **features = dynemit_features();
     printf("Available features:\n");
     for (int i = 0; features[i] != NULL; i++) {
@@ -234,11 +307,14 @@ int main(void) {
     simd_level_t level = detect_simd_level();
     printf("SIMD level: %s\n", simd_level_name(level));
     
-    // Use any of the vector operations
     float a[1024], b[1024], result[1024];
-    vector_add_f32(a, b, result, 1024);
-    vector_mul_f32(a, b, result, 1024);
-    vector_sub_f32(a, b, result, 1024);
+    add_f32(a, b, result, 1024);
+    mul_f32(a, b, result, 1024);
+    sub_f32(a, b, result, 1024);
+    
+    double data[1024];
+    double avg = mean_f64(data, 1024);
+    double var = variance_f64(data, 1024);
     
     return 0;
 }
@@ -258,15 +334,19 @@ Include only the features you need:
 
 ```c
 #include <dynemit/core.h>
-#include <dynemit/vector_add.h>
-#include <dynemit/vector_mul.h>
+#include <dynemit/add.h>
+#include <dynemit/mul.h>
+#include <dynemit/mean.h>
 
 int main(void) {
     simd_level_t level = detect_simd_level();
     float a[1024], b[1024], result[1024];
     
-    vector_add_f32(a, b, result, 1024);
-    vector_mul_f32(a, b, result, 1024);
+    add_f32(a, b, result, 1024);
+    mul_f32(a, b, result, 1024);
+    
+    double data[1024];
+    double avg = mean_f64(data, 1024);
     
     return 0;
 }
@@ -274,7 +354,7 @@ int main(void) {
 
 Compile and link:
 ```bash
-gcc -O3 myprogram.c -ldynemit_core -ldynemit_vector_add -ldynemit_vector_mul -lm -o myprogram
+gcc -O3 myprogram.c -ldynemit_core -ldynemit_add -ldynemit_mul -ldynemit_mean -lm -o myprogram
 ```
 
 </details>
@@ -314,19 +394,20 @@ The library is fully compatible with C++ and includes `extern "C"` guards in all
 #include <iostream>
 
 int main() {
-    // Query SIMD capabilities
     simd_level_t level = detect_simd_level();
     std::cout << "SIMD Level: " << simd_level_name(level) << std::endl;
     
-    // Use with STL containers
     std::vector<float> a(1024, 1.0f);
     std::vector<float> b(1024, 2.0f);
     std::vector<float> result(1024);
     
-    // Automatically dispatches to optimal SIMD implementation
-    vector_mul_f32(a.data(), b.data(), result.data(), a.size());
-    vector_add_f32(a.data(), b.data(), result.data(), a.size());
-    vector_sub_f32(a.data(), b.data(), result.data(), a.size());
+    mul_f32(a.data(), b.data(), result.data(), a.size());
+    add_f32(a.data(), b.data(), result.data(), a.size());
+    sub_f32(a.data(), b.data(), result.data(), a.size());
+    
+    std::vector<double> data(1024, 3.14);
+    double avg = mean_f64(data.data(), data.size());
+    double var = variance_f64(data.data(), data.size());
     
     return 0;
 }
@@ -414,7 +495,7 @@ Each SIMD level has its own implementation compiled with appropriate target attr
 
 ```c
 __attribute__((target("avx2")))
-static void vector_mul_f32_avx2(const float *a, const float *b, float *out, size_t n)
+static void mul_f32_avx2(const float *a, const float *b, float *out, size_t n)
 {
     // AVX2 implementation using 256-bit YMM registers
 }
@@ -422,21 +503,21 @@ static void vector_mul_f32_avx2(const float *a, const float *b, float *out, size
 
 ### 3. Runtime Dispatch with ifunc
 
-The `vector_mul_f32()` function uses the ifunc attribute to resolve to the optimal implementation:
+The `mul_f32()` function uses the ifunc attribute to resolve to the optimal implementation:
 
 ```c
-vector_mul_f32_func_t vector_mul_f32_resolver(void)
+mul_f32_func_t mul_f32_resolver(void)
 {
     simd_level_t level = detect_simd_level();
     switch (level) {
-        case SIMD_AVX512F: return vector_mul_f32_avx512f;
-        case SIMD_AVX2:    return vector_mul_f32_avx2;
+        case SIMD_AVX512F: return mul_f32_avx512f;
+        case SIMD_AVX2:    return mul_f32_avx2;
         // ... other cases
     }
 }
 
-void vector_mul_f32(const float *, const float *, float *, size_t)
-    __attribute__((ifunc("vector_mul_f32_resolver")));
+void mul_f32(const float *, const float *, float *, size_t)
+    __attribute__((ifunc("mul_f32_resolver")));
 ```
 
 This happens **once** at program load time, making subsequent calls as fast as direct function calls.
@@ -490,44 +571,44 @@ This will show:
 
 ```
 libdynemit/
-├── CMakeLists.txt          # Main CMake configuration
+├── CMakeLists.txt              # Main CMake configuration
+├── cmake/                      # CMake modules
 ├── include/
-│   ├── dynemit.h           # Umbrella header (includes all features)
+│   ├── dynemit.h               # Umbrella header (includes all features)
 │   └── dynemit/
-│       ├── core.h          # CPU detection API
-│       ├── compiler.h      # Compiler portability macros (GCC/Clang)
-│       ├── vector_add.h    # Vector addition feature
-│       ├── vector_mul.h    # Vector multiplication feature
-│       └── ... and more
+│       ├── core.h              # CPU detection API
+│       ├── compiler.h          # Compiler portability macros (GCC/Clang)
+│       ├── err.h               # Safe IFUNC resolver utilities
+│       ├── *.h                 # Features
 ├── src/
-│   ├── CMakeLists.txt      # Core library build config
-│   ├── dynemit.c           # CPU feature detection implementation
-│   └── dynemit_features.c  # Feature list for all-in-one library
-├── features/
-│   ├── vector_add/
-│   │   ├── CMakeLists.txt
-│   │   └── vector_add.c    # SIMD add implementations
-│   ├── vector_mul/
-│   │   ├── CMakeLists.txt
-│   │   └── vector_mul.c    # SIMD multiply implementations
-│   └── ... and more
+│   ├── CMakeLists.txt          # Core library build config
+│   ├── dynemit.c               # CPU feature detection implementation
+│   └── dynemit_features.c      # Feature list for all-in-one library
+├── features/                   # One subdirectory per feature
+│   ├── add/                    # Element-wise vector addition
+│   │   ├── CMakeLists.txt      # Library + test + benchmark targets
+│   │   ├── add_f32.c           # SIMD implementations
+│   │   ├── tests/*             # Correctness tests
+│   │   └── benchmarks/*        # Benchmarks for the feature
+│   └── *
 ├── bench/
-│   ├── CMakeLists.txt      # Benchmark CMake config
-│   ├── benchmark_vector_mul.c  # Benchmark program
-│   └── data/               # Benchmark results (CSV files)
-├── tests/
-│   ├── CMakeLists.txt      # Tests CMake config
-│   ├── test_features.c     # Feature discovery test
-│   └── test_vector_ops.c   # Vector operations correctness test
+│   ├── bench_utils.h           # Shared benchmark infrastructure (header-only)
+│   └── data/                   # Benchmark results (CSV files)
+├── tests/                      # Core-only tests (SIMD detection, C++ compat)
+│   ├── CMakeLists.txt
+│   ├── test_*
 ├── docs/
-│   ├── ADDING_FEATURES.md  # Guide for adding new features
-│   ├── ARCHITECTURE.md     # Internal architecture documentation
-│   ├── BENCHMARKING.md     # Benchmarking and visualization guide
-│   └── img/                # Generated benchmark charts
+│   ├── ADDING_FEATURES.md      # Guide for adding new features
+│   ├── ARCHITECTURE.md         # Internal architecture documentation
+│   ├── DEVELOPMENT.md          # Development setup guide
+│   ├── BENCHMARKING.md         # Benchmarking and visualization guide
+│   ├── IFUNC_RESOLVERS.md      # IFUNC resolver safety documentation
+│   └── img/                    # Generated benchmark charts
 ├── scripts/
-│   ├── check_for_simd.sh   # Verify SIMD instructions in binary
-│   ├── plot_benchmark.py   # Generate benchmark visualization charts
-│   └── requirements.txt    # Python dependencies for visualization
+│   ├── check_for_simd.sh       # Verify SIMD instructions in binary
+│   ├── plot_benchmark.py       # Generate benchmark visualization charts
+│   └── requirements.txt        # Python dependencies for visualization
+├── mull.yml                    # Mull mutation testing config
 └── README.md
 ```
 
@@ -537,14 +618,15 @@ libdynemit/
 <summary><b>Build Options</b></summary>
 
 ```bash
-# Debug build
-cmake .. -DCMAKE_BUILD_TYPE=Debug
-
 # Release build (default, -O3 optimization)
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake -B build
+cmake --build build -j$(nproc)
 
-# List available features
-cmake .. -DLIST_FEATURES=ON
+# Debug build
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+
+# List available features at configure time
+cmake -B build -DLIST_FEATURES=ON
 ```
 
 </details>
@@ -552,65 +634,82 @@ cmake .. -DLIST_FEATURES=ON
 <details>
 <summary><b>Running Tests</b></summary>
 
-```bash
-# Build and run tests
-cd build
-make
-ctest --verbose
+All C tests use the [Unity](https://github.com/ThrowTheSwitch/Unity) framework; C++ tests use [Google Test](https://github.com/google/googletest). Both are fetched automatically via CMake FetchContent.
 
-# Or run individual test
-./tests/test_features
+```bash
+# Run the full test suite (core + all features)
+ctest --test-dir build --output-on-failure
+
+# Run a single feature test directly
+./build/features/add/test_add
+./build/features/sum/test_sum
 ```
+
+Each feature has its own tests under `features/<name>/tests/` that cover correctness across multiple input sizes and all reachable SIMD variants (via the `_select()` API). Core tests in `tests/` cover SIMD detection, resolver macros, feature discovery, and C++ compatibility.
+
+</details>
+
+<details>
+<summary><b>Code Coverage</b></summary>
+
+Generate an HTML coverage report over all tests (requires GCC, `lcov`, and `genhtml`):
+
+```bash
+cmake -B build-cov -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON
+cmake --build build-cov -j$(nproc)
+cmake --build build-cov --target coverage
+```
+
+Open `build-cov/coverage_report/index.html` in a browser. The coverage target zeroes counters, runs the full test suite, captures line/function/branch data, and filters to only project source files.
+
+</details>
+
+<details>
+<summary><b>Mutation Testing</b></summary>
+
+[Mull](https://github.com/mull-project/mull) injects mutations into compiled bitcode to verify test quality. Requires Clang and the `mull` package.
+
+```bash
+# Build with the Mull pass plugin
+cmake -B build-mull -DCMAKE_C_COMPILER=clang -DDYNEMIT_MULL=ON
+cmake --build build-mull -j$(nproc)
+
+# Run mutation testing on individual test binaries
+mull-runner-20 ./build-mull/features/add/test_add
+mull-runner-20 ./build-mull/features/sum/test_sum
+```
+
+The `mull.yml` config at the project root controls which mutators are active.
 
 </details>
 
 <details>
 <summary><b>Running Benchmarks</b></summary>
 
-The benchmark program measures **single-core** performance across multiple array sizes and SIMD levels:
+Each feature has its own benchmark under `features/<name>/benchmarks/`. Benchmarks measure single-core performance across multiple array sizes and all SIMD levels using the shared infrastructure in `bench/bench_utils.h`.
 
-**Quick benchmark (human-readable output):**
 ```bash
-./build/bench/benchmark_vector_mul
+# Run all features x all SIMD levels, pinned to one core, max nice priority
+sudo ./scripts/run_all_benchmarks.sh --cpu 15
+
+# Or run a single feature benchmark directly
+./build/features/add/bench_add
+./build/features/add/bench_add --auto-detect
+# Creates: bench/data/add_<cpu_model>_<simd_level>.csv
 ```
 
-Example output:
-```
-===========================================
-Vector Multiply Benchmark
-===========================================
-Detected SIMD level: AVX2
-(this is the version the ifunc dispatcher will pick)
-
---- Benchmarking size: 1024 elements ---
-  n = 1024, iters = 5000
-  time per call = 0.001234 ms
-  GFLOP/s = 0.8296
-  correctness: OK
-...
-```
-
-**Auto-detect CPU and save results:**
+**Regenerate charts from existing CSV data:**
 ```bash
-./build/bench/benchmark_vector_mul --auto-detect
-# Automatically creates: bench/data/results_<cpu_model>_<simd_level>.csv
+bash ./scripts/run_all_benchmarks.sh --charts-only
 ```
 
-**Generate CSV data for visualization:**
+**Create a portable bundle for remote servers:**
 ```bash
-./build/bench/benchmark_vector_mul --csv > results.csv
+./scripts/bundle_benchmarks.sh --strip
+# Produces: dynemit-bench-x86_64.tar.gz (static binaries)
 ```
 
-**Create performance charts:**
-```bash
-# Install Python dependencies (first time only)
-pip install -r scripts/requirements.txt
-
-# Generate chart (labels auto-inferred from filenames)
-python scripts/plot_benchmark.py bench/data/*.csv
-```
-
-For detailed benchmarking instructions, including how to compare different SIMD levels and CPUs, see [docs/BENCHMARKING.md](docs/BENCHMARKING.md).
+For detailed benchmarking instructions, chart naming conventions, and remote server workflow, see [docs/BENCHMARKING.md](docs/BENCHMARKING.md).
 
 </details>
 
@@ -622,36 +721,35 @@ For detailed instructions on how to add new SIMD-optimized features, see [docs/A
 
 Quick summary:
 
-1. **Create feature directory**: `features/your_feature/`
-2. **Add source file**: `features/your_feature/your_feature.c`
-3. **Create header**: `include/dynemit/your_feature.h`
+1. **Create feature directory**: `features/my_feature/`
+2. **Add source files**: `features/my_feature/my_feature_f64.c` (one per type variant)
+3. **Create header**: `include/dynemit/my_feature.h`
 4. **Add CMakeLists.txt** following the pattern:
    ```cmake
-   # Object library for bundling
-   add_library(your_feature_obj OBJECT your_feature.c)
-   target_include_directories(your_feature_obj PRIVATE ${PROJECT_SOURCE_DIR}/include)
-   target_link_libraries(your_feature_obj PUBLIC dynemit_core)
+   add_library(my_feature_obj OBJECT my_feature_f64.c)
+   target_include_directories(my_feature_obj PRIVATE ${PROJECT_SOURCE_DIR}/include)
+   target_link_libraries(my_feature_obj PUBLIC dynemit_core)
    
-   # Individual static library
-   add_library(dynemit_your_feature STATIC $<TARGET_OBJECTS:your_feature_obj>)
-   target_include_directories(dynemit_your_feature PUBLIC ${PROJECT_SOURCE_DIR}/include)
-   target_link_libraries(dynemit_your_feature PUBLIC dynemit_core)
+   add_library(dynemit_my_feature STATIC $<TARGET_OBJECTS:my_feature_obj>)
+   target_include_directories(dynemit_my_feature PUBLIC ${PROJECT_SOURCE_DIR}/include)
+   target_link_libraries(dynemit_my_feature PUBLIC dynemit_core)
    
-   # Installation
-   install(TARGETS dynemit_your_feature ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-   install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/your_feature.h 
+   install(TARGETS dynemit_my_feature ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+   install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/my_feature.h 
            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
    ```
-5. **Update main CMakeLists.txt**: Add to `dynemit` all-in-one library
-6. **Update umbrella header**: Add `#include <dynemit/your_feature.h>` in `include/dynemit.h`
+5. **Register the feature**: Add it to the `features[]` array in `src/dynemit_features.c`
+6. **Update umbrella header**: Add `#include <dynemit/my_feature.h>` in `include/dynemit.h`
+
+The build system auto-discovers `features/*/` subdirectories, so no changes to the root `CMakeLists.txt` are needed.
 
 ## Contributing
 
 Contributions are welcome! Areas for improvement:
-- Additional SIMD operations (add, subtract, fused multiply-add, etc.)
-- ARM NEON support
+- Additional type variants for existing features
+- ARM NEON and RISC-V Vector Extension support
 - AMD-specific optimizations (FMA4, XOP)
-- Additional benchmarks and test cases
+- Additional benchmarks and test cases for new features
 
 ## License
 

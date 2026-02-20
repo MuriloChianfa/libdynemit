@@ -1,392 +1,215 @@
-# Benchmarking Guide
+# Benchmarking
 
-This document explains how to run benchmarks, collect performance data, and generate visualization charts for libdynemit.
-
-## Overview
-
-The libdynemit benchmarking system allows you to:
-- Measure **single-core** performance of vector operations across different array sizes
-- Compare SIMD implementations (Scalar, SSE2, SSE4.2, AVX, AVX2, AVX-512F)
-- Analyze cache effects and scalability
-- Collect **statistical data** from multiple trials for robust performance analysis
-
-**Note:** This benchmark measures single-threaded, single-core performance to isolate SIMD instruction efficiency without multi-threading overhead.
-
-## Statistical Methodology
-
-### Multiple Trials for Robustness
-
-Each array size is benchmarked with **10 independent trials** to account for system noise and variability. This provides:
-
-- **Median time**: More robust than mean, resistant to outliers from context switches or cache effects
-- **Standard deviation**: Measures variability across trials
-- **99th percentile (p99)**: Shows worst-case performance
-- **Min/Max**: Captures the full range of observed performance
-
-### Why Median Over Mean?
-
-The benchmark reports **median** values as the primary metric because:
-- System noise (context switches, interrupts) can cause occasional slow runs
-- Median is resistant to these outliers while mean can be skewed
-- More representative of "typical" performance
-- Standard practice in performance benchmarking
-
-### Interpreting Statistical Data
-
-**Shaded regions (±1σ)**: Shows one standard deviation above and below the median. Narrower regions indicate more consistent performance.
-
-**Error bars**: Visual representation of standard deviation. Larger bars suggest higher variability.
-
-**P99 markers (x)**: Show the 99th percentile timing. If p99 is far from median, performance has occasional slow outliers.
-
-**Example interpretation:**
-- Small error bars + low p99 = Consistent, predictable performance
-- Large error bars + high p99 = Variable performance, possibly cache/thermal effects
+Every feature ships with its own benchmark binary under
+`features/<name>/benchmarks/`. All benchmarks share the same CLI interface
+and produce the same CSV format, so the plotting script works with any of them.
 
 ## Quick Start
 
-### 1. Build the Benchmark
+```bash
+# Build
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+
+# Run all features, all SIMD levels, pinned to a single core
+sudo ./scripts/run_all_benchmarks.sh --cpu 15
+
+# Or regenerate charts from existing CSV data only
+bash ./scripts/run_all_benchmarks.sh --charts-only
+```
+
+## CLI Options
+
+Every benchmark supports the same flags:
+
+```
+Usage: bench_<name> [OPTIONS]
+
+Options:
+  --csv              Output results in CSV format to stdout
+  --force-level LVL  Force a specific SIMD level instead of auto-detection
+                     Valid levels: scalar, sse2, sse4.2, avx, avx2, avx512f
+  --auto-detect      Auto-detect CPU and SIMD level, write CSV to file
+  --help, -h         Show help
+```
+
+### Default mode (human-readable)
+
+Uses the best SIMD level available on the current CPU (identical to ifunc dispatch):
 
 ```bash
-cd libdynemit
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make
+./build/features/mul/bench_mul
 ```
 
-The benchmark executable will be located at `build/bench/benchmark_vector_mul`.
+### Force a specific SIMD level
 
-**Note:** The benchmark is statically linked, making it portable across different Linux distributions and glibc versions without compatibility issues.
-
-### 2. Run a Simple Benchmark
+Directly calls a particular SIMD implementation via the `_select()` API:
 
 ```bash
-./build/bench/benchmark_vector_mul
+./build/features/mul/bench_mul --force-level scalar
+./build/features/mul/bench_mul --force-level avx2
 ```
 
-This runs the benchmark with human-readable output showing:
-- Detected SIMD level
-- Performance metrics for each array size
-- Correctness verification
-
-Example output:
-```
-===========================================
-Vector Multiply Benchmark
-===========================================
-Detected SIMD level: AVX2
-(this is the version the ifunc dispatcher will pick)
-
---- Benchmarking size: 1024 elements ---
-  n = 1024, iters = 5000, trials = 10
-  median = 0.001234 ms, mean = 0.001245 ms
-  stddev = 0.000023 ms, min = 0.001210 ms, max = 0.001289 ms
-  p99 = 0.001278 ms
-  GFLOP/s = 0.8296 (based on median)
-  correctness: OK
-
-...
-```
-
-### 3. Generate CSV Data
-
-For post-processing and chart generation, use CSV output:
+### CSV output
 
 ```bash
-./build/bench/benchmark_vector_mul --csv > results_avx2.csv
+./build/features/mul/bench_mul --csv
+./build/features/mul/bench_mul --csv --force-level sse2 > bench/data/mul_sse2.csv
 ```
 
-Or use **auto-detect mode** to automatically generate a filename based on your CPU and SIMD level:
+### Auto-detect (save to file)
+
+Detects the CPU model and SIMD level, then writes CSV to `bench/data/`:
 
 ```bash
-./build/bench/benchmark_vector_mul --auto-detect
-# Creates: bench/data/results_amd_ryzen_9_9950x3d_avx_512f.csv
+./build/features/mul/bench_mul --auto-detect
+# Creates: bench/data/mul_<cpu_model>_<simd_level>.csv
+
+# Combine with --force-level to save a specific SIMD level result:
+./build/features/mul/bench_mul --auto-detect --force-level avx2
+# Creates: bench/data/mul_<cpu_model>_avx2.csv
 ```
 
-The auto-detect mode:
-- Reads CPU model from `/proc/cpuinfo`
-- Detects SIMD level automatically
-- Saves to `bench/data/` directory
-- Generates descriptive filename: `results_<cpu_model>_<simd_level>.csv`
-- Perfect for collecting data from multiple machines without manual naming
+## CSV Format
 
-CSV format:
+All benchmarks emit the same columns:
+
 ```
 array_size,median_ms,mean_ms,stddev_ms,min_ms,max_ms,p99_ms,gflops,simd_level
-1024,0.001234,0.001245,0.000023,0.001210,0.001289,0.001278,0.8296,AVX2
-2048,0.002456,0.002468,0.000045,0.002420,0.002534,0.002515,0.8341,AVX2
-...
 ```
 
-**Column descriptions:**
-- `array_size`: Number of float elements in the arrays
-- `median_ms`: Median time across 10 trials (primary metric)
-- `mean_ms`: Mean time across 10 trials
-- `stddev_ms`: Standard deviation of times
-- `min_ms`: Fastest time observed
-- `max_ms`: Slowest time observed
-- `p99_ms`: 99th percentile time
-- `gflops`: GFLOP/s calculated from median time
-- `simd_level`: SIMD instruction set used
+10 trials are run per array size. The `median_ms` column is used for chart plotting
+and `gflops` is derived from the median.
 
-## Best Practices for Fair Benchmarking
+## Running All Benchmarks
 
-### CPU Core Pinning with taskset
-
-For more consistent and fair benchmark results, it's recommended to pin the benchmark process to a specific CPU core using `taskset`. This prevents the OS scheduler from moving your process between cores, which can introduce variability due to:
-
-- **Cache invalidation**: Moving between cores loses cached data
-- **Core-to-core migration overhead**: Context switching between different physical/logical cores
-- **CPU frequency variations**: Different cores may run at different frequencies (especially on hybrid architectures)
-- **Thermal throttling differences**: Some cores may be hotter than others
-
-**Run the benchmark on a single core:**
+The `scripts/run_all_benchmarks.sh` script runs all features across all
+SIMD levels with CPU pinning and max scheduling priority for
+fair, reproducible results.
 
 ```bash
-taskset -c 0 ./build/bench/benchmark_vector_mul
+# Full run: build + benchmark + charts
+sudo ./scripts/run_all_benchmarks.sh
+
+# Pin to specific CPU core
+sudo ./scripts/run_all_benchmarks.sh --cpu 15
+
+# Skip build step (binaries already compiled)
+sudo ./scripts/run_all_benchmarks.sh --skip-build
+
+# Only regenerate charts from existing CSV data (no sudo needed)
+bash ./scripts/run_all_benchmarks.sh --charts-only
 ```
 
-This pins the process to CPU core 0. You can use any core number (0, 1, 2, etc.).
+The script uses `taskset -c <core>` to pin each benchmark to a single CPU core
+and `nice -n -20` for maximum scheduling priority. By default it picks the last
+physical core to avoid core 0, which typically handles hardware interrupts.
 
-**With CSV output:**
+## Chart Naming Convention
 
-```bash
-taskset -c 0 ./build/bench/benchmark_vector_mul --csv > results.csv
+The script generates two types of charts per feature:
+
+| Type | Filename | Description |
+|------|----------|-------------|
+| SIMD comparison | `{feature}_simd_{cpu-slug}.png` | All SIMD levels on one CPU |
+| CPU comparison  | `{feature}_cpus.png`            | Best SIMD per CPU, across CPUs |
+
+Examples:
+
+```
+docs/img/add_simd_amd-ryzen-9-9950x3d.png      # 6 SIMD levels on Ryzen 9
+docs/img/add_cpus.png                          # All CPUs compared at best SIMD
+docs/img/variance_simd_intel-xeon-e5-2699.png  # 6 SIMD levels on Xeon
+docs/img/variance_cpus.png                     # All CPUs compared
 ```
 
-**With auto-detect:**
-
-```bash
-taskset -c 0 ./build/bench/benchmark_vector_mul --auto-detect
-```
-
-**Checking which cores are available:**
-
-```bash
-# List all available CPU cores
-lscpu
-
-# Or check the number of cores
-nproc
-```
-
-## Comparing Different SIMD Levels
-
-Since the benchmark automatically detects and uses the best available SIMD level on your CPU, to compare different levels you need to:
-
-### Option 1: Run on Different Machines (Recommended)
-
-Use `--auto-detect` to automatically collect properly-named results from each machine:
-
-```bash
-# On Machine 1 (e.g., AMD Ryzen 9 9950X3D with AVX-512F)
-./build/bench/benchmark_vector_mul --auto-detect
-# Creates: results_amd_ryzen_9_9950x3d_avx_512f.csv
-
-# On Machine 2 (e.g., Intel Xeon E5-2680 v4 with AVX2)
-./build/bench/benchmark_vector_mul --auto-detect
-# Creates: results_intel_xeon_e5_2680_v4_avx2.csv
-
-# On Machine 3 (e.g., older Intel Core i5 with SSE4.2)
-./build/bench/benchmark_vector_mul --auto-detect
-# Creates: results_intel_core_i5_6500_sse4_2.csv
-```
-
-Copy all CSV files to one machine for chart generation.
-
-### Option 2: Manual CSV Output
-
-If you prefer manual filenames:
-
-```bash
-# On a machine with AVX2 support
-./build/bench/benchmark_vector_mul --csv > results_avx2.csv
-
-# On a machine with only SSE4.2 support
-./build/bench/benchmark_vector_mul --csv > results_sse42.csv
-
-# On a machine with AVX-512F support
-./build/bench/benchmark_vector_mul --csv > results_avx512.csv
-```
+SIMD charts use clean labels (Scalar, SSE2, SSE4.2, AVX, AVX2, AVX-512F).
+CPU charts label each line with the CPU name and its best SIMD level.
 
 ## Generating Charts
 
-### Prerequisites
+Charts are generated by `scripts/plot_benchmark.py`, which is called
+automatically by `run_all_benchmarks.sh`. You can also invoke it directly:
 
-Install Python dependencies:
+Prerequisites:
 
-```bash
-pip install -r scripts/requirements.txt
-```
-
-Or install manually:
 ```bash
 pip install matplotlib numpy
 ```
 
-### Basic Usage
-
-Generate a chart from CSV files (labels auto-inferred from filenames):
+### Plotting options
 
 ```bash
-# Single file
-python3 scripts/plot_benchmark.py bench/data/results_amd_ryzen_9_9950x3d_avx_512f.csv
+# Auto-infer labels from filenames
+python scripts/plot_benchmark.py bench/data/add_*.csv -o my_chart.png
 
-# Multiple files (comparison chart)
-python3 scripts/plot_benchmark.py bench/data/*.csv
+# Explicit labels
+python scripts/plot_benchmark.py --input file1.csv:Label1 file2.csv:Label2
 
-# With custom output
-python3 scripts/plot_benchmark.py bench/data/*.csv --output my_chart.png
+# Plot GFLOP/s instead of time
+python scripts/plot_benchmark.py bench/data/*.csv --metric gflops
+
+# Custom title
+python scripts/plot_benchmark.py bench/data/*.csv --title "My Title"
 ```
 
-The script automatically:
-- Infers CPU names and SIMD levels from filenames
-- Saves to `docs/img/benchmark_vector_mul.png` by default
-- Formats labels nicely (e.g., "AMD RYZEN 9 9950X3D (AVX-512F)")
+## Portable Benchmark Bundle
 
-**Custom labels (optional):**
-```bash
-python3 scripts/plot_benchmark.py \
-  --input bench/data/results_amd_ryzen_9_9950x3d_avx_512f.csv:"My Custom Label"
-```
-
-### Comparing Multiple SIMD Levels
-
-Combine results from different CPUs/SIMD levels:
+To benchmark on remote servers without building from source, create a portable
+bundle with statically-linked binaries:
 
 ```bash
-# Collect all CSV files from bench/data/ and generate comparison
-python3 scripts/plot_benchmark.py bench/data/*.csv
-
-# Or be selective
-python3 scripts/plot_benchmark.py \
-  bench/data/results_intel_*.csv \
-  bench/data/results_amd_*.csv \
-  --title "Intel vs AMD Performance"
+# Build the bundle (on your dev machine)
+./scripts/bundle_benchmarks.sh --strip
+# Produces: dynemit-bench-x86_64.tar.gz
 ```
 
-### Chart Types
+The bundle contains static x86_64 binaries and a self-contained runner script.
+No compiler, cmake, or libraries needed on the target machine.
 
-**Time-based chart (default):**
-```bash
-python3 scripts/plot_benchmark.py bench/data/*.csv --metric time
-```
-
-**GFLOP/s chart:**
-```bash
-python3 scripts/plot_benchmark.py bench/data/*.csv --metric gflops
-```
-
-## Understanding the Results
-
-### Array Sizes
-
-The benchmark tests these array sizes:
-- Small arrays (512 - 32K): L1/L2 cache performance
-- Medium arrays (64K - 512K): L3 cache performance
-- Large arrays (1M - 4M): Main memory bandwidth
-- Very large arrays (5M - 16M): Memory bandwidth saturation
-
-Each element is a 32-bit float (4 bytes).
-
-**Size ranges:**
-- **512 to 128K**: Dense sampling for cache behavior analysis
-- **256K to 4M**: Transition from cache to memory-bound
-- **5M to 16M**: Large-scale memory bandwidth testing
-
-### Cache Effects
-
-You'll typically see different performance characteristics at different scales:
-
-- **1K-32K**: Data fits in L1/L2 cache (very fast)
-- **64K-256K**: Data fits in L3 cache (fast)
-- **512K-1M**: Data spills to main RAM (slower, memory-bound)
-
-Actual speedup depends on:
-- Memory bandwidth
-- Cache behavior
-- CPU microarchitecture
-
-### Interpreting Charts
-
-The generated charts include:
-
-**Main line (median)**: The primary performance metric, showing typical execution time at each array size.
-
-**Shaded region (±1σ)**: One standard deviation above and below the median. Narrower regions indicate more consistent performance.
-
-**Error bars**: Visual representation of standard deviation across trials.
-
-**P99 markers (×)**: Show 99th percentile performance. Distance from median indicates outlier frequency.
-
-**Secondary y-axis**: Time in milliseconds for easier reading of small values.
-
-**Performance characteristics to look for:**
-
-**Linear scaling region:**
-- Small arrays where compute dominates
-- SIMD speedup is most visible
-- Consistent performance (small error bars)
-
-**Flat/sublinear region:**
-- Large arrays where memory bandwidth dominates
-- All SIMD levels may converge in performance
-- May show higher variability (larger error bars) due to cache effects
-
-**Transition points:**
-- Sudden slope changes often correspond to cache boundaries
-- L1 → L2 → L3 → RAM transitions visible as inflection points
-
-### Benchmark Runtime
-
-The benchmark runs 10 trials per array size, so expect longer execution times compared to single-run benchmarks:
-
-- **Small arrays (< 100K elements)**: 5,000 iterations × 10 trials = 50,000 calls
-- **Medium arrays (100K - 2M elements)**: 2,000 iterations × 10 trials = 20,000 calls
-- **Large arrays (2M - 5M elements)**: 1,000 iterations × 10 trials = 10,000 calls
-- **Very large arrays (> 5M elements)**: 500 iterations × 10 trials = 5,000 calls
-
-Total benchmark runtime: typically 2-5 minutes depending on CPU speed and array sizes tested.
-
-## Example Workflow
-
-Complete workflow from build to chart:
+### Upload and run on a server
 
 ```bash
-# 1. Build
-cd libdynemit
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make
+scp dynemit-bench-x86_64.tar.gz server:
+ssh server
 
-# 2. Run benchmark (auto-saves to bench/data/)
-cd ..
-./build/bench/benchmark_vector_mul --auto-detect
-
-# 3. Install Python dependencies (first time only)
-pip install -r scripts/requirements.txt
-
-# 4. Generate chart (labels auto-inferred)
-python3 scripts/plot_benchmark.py bench/data/*.csv
-
-# 5. View the chart
-xdg-open docs/img/benchmark_vector_mul.png
+tar xzf dynemit-bench-x86_64.tar.gz
+cd dynemit-bench
+sudo ./run.sh --cpu 0
 ```
 
-## Contributing
+The bundled `run.sh` supports:
 
-Improvements welcome:
-- Additional benchmark metrics (memory bandwidth, cache misses, etc.)
-- Automated multi-CPU testing infrastructure
-- Benchmark regression detection
-- Further statistical analysis (confidence intervals, hypothesis testing)
+```
+Usage: sudo ./run.sh [--cpu CORE] [--levels LEVELS]
 
-## Appendix: Statistical Notes
+Options:
+  --cpu CORE       Pin to CPU core (default: last physical core)
+  --levels LEVELS  Comma-separated: scalar,sse2,sse4.2,avx,avx2,avx512f
+```
 
-### Why 10 Trials?
+### Collect results and generate charts
 
-10 trials provides a good balance between:
-- Statistical reliability (enough samples for median/stddev)
-- Reasonable runtime (not too many iterations)
-- Outlier detection (can identify anomalous runs)
+```bash
+# Copy CSVs back to your dev machine
+scp 'server:dynemit-bench/data/*.csv' bench/data/
 
+# Regenerate charts (picks up the new CPU data automatically)
+bash scripts/run_all_benchmarks.sh --charts-only
+```
+
+The chart generator automatically discovers all CPUs from the CSV filenames,
+so adding data from new servers produces multi-line CPU comparison charts
+without any configuration changes.
+
+## Static Build Option
+
+Benchmarks can be statically linked via the CMake option:
+
+```bash
+cmake -B build-static -DCMAKE_BUILD_TYPE=Release -DDYNEMIT_STATIC_BENCHMARKS=ON
+cmake --build build-static -j$(nproc)
+```
+
+This is used internally by `scripts/bundle_benchmarks.sh`. The resulting
+binaries run on any x86_64 Linux regardless of glibc version.
