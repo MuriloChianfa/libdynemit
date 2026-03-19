@@ -1,11 +1,17 @@
 /* SPDX-License-Identifier: BSL-1.0 */
+#if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
+#elif defined(__aarch64__)
+#include <arm_neon.h>
+#endif
 #include <stddef.h>
 #include <stdint.h>
 #include <dynemit/max.h>
 #include <dynemit/compiler.h>
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
+#endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
 max_u32_scalar(const uint32_t *data, size_t n)
@@ -17,6 +23,8 @@ max_u32_scalar(const uint32_t *data, size_t n)
         if (data[i] > result) result = data[i];
     return (double)result;
 }
+
+#if defined(__x86_64__) || defined(__i386__)
 
 __attribute__((target("sse2")))
 static double
@@ -84,15 +92,40 @@ max_u32_avx512f(const uint32_t *data, size_t n)
     return (double)result;
 }
 
+#endif /* x86 */
+
+#if defined(__aarch64__)
+
+static double
+max_u32_neon(const uint32_t *data, size_t n)
+{
+    if (n == 0) return 0.0;
+    size_t i = 0;
+    uint32x4_t vmax = vdupq_n_u32(0);
+    for (; i + 4 <= n; i += 4)
+        vmax = vmaxq_u32(vmax, vld1q_u32(data + i));
+    uint32_t result = vmaxvq_u32(vmax);
+    for (; i < n; i++)
+        if (data[i] > result) result = data[i];
+    return (double)result;
+}
+
+#endif /* aarch64 */
+
 max_u32_fn_t
 max_u32_select(simd_level_t level)
 {
     switch (level) {
+#if defined(__x86_64__) || defined(__i386__)
     case SIMD_AVX512F: return max_u32_avx512f;
     case SIMD_AVX2:    return max_u32_avx2;
     case SIMD_AVX:     return max_u32_avx;
     case SIMD_SSE4_2:  return max_u32_sse42;
     case SIMD_SSE2:    return max_u32_sse2;
+#endif
+#if defined(__aarch64__)
+    case SIMD_NEON:    return max_u32_neon;
+#endif
     case SIMD_SCALAR:
     default:           return max_u32_scalar;
     }
@@ -104,6 +137,8 @@ max_u32_resolver(void)
     return max_u32_select(detect_simd_level());
 }
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
+#endif
 double max_u32(const uint32_t *data, size_t n)
     __attribute__((ifunc("max_u32_resolver")));

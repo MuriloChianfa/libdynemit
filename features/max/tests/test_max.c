@@ -46,8 +46,8 @@ void test_max_f64_all_variants(void)
 {
     double d[] = {5.0, 3.0, 8.0, 1.0, 4.0};
     simd_level_t max_level = detect_simd_level();
-    for (int lvl = SIMD_SCALAR; lvl <= (int)max_level; lvl++) {
-        max_f64_fn_t fn = max_f64_select((simd_level_t)lvl);
+    for (int i = 0; i < DYNEMIT_N_LEVELS && DYNEMIT_SIMD_LEVELS[i] <= max_level; i++) {
+        max_f64_fn_t fn = max_f64_select(DYNEMIT_SIMD_LEVELS[i]);
         TEST_ASSERT_NOT_NULL(fn);
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, 8.0, fn(d, 5));
     }
@@ -57,8 +57,8 @@ void test_max_u64_all_variants(void)
 {
     uint64_t d[] = {100, 5, 50, 200};
     simd_level_t max_level = detect_simd_level();
-    for (int lvl = SIMD_SCALAR; lvl <= (int)max_level; lvl++) {
-        max_u64_fn_t fn = max_u64_select((simd_level_t)lvl);
+    for (int i = 0; i < DYNEMIT_N_LEVELS && DYNEMIT_SIMD_LEVELS[i] <= max_level; i++) {
+        max_u64_fn_t fn = max_u64_select(DYNEMIT_SIMD_LEVELS[i]);
         TEST_ASSERT_NOT_NULL(fn);
         TEST_ASSERT_DOUBLE_WITHIN(1e-6, 200.0, fn(d, 4));
     }
@@ -68,8 +68,8 @@ void test_max_u32_all_variants(void)
 {
     uint32_t d[] = {10, 30, 7};
     simd_level_t max_level = detect_simd_level();
-    for (int lvl = SIMD_SCALAR; lvl <= (int)max_level; lvl++) {
-        max_u32_fn_t fn = max_u32_select((simd_level_t)lvl);
+    for (int i = 0; i < DYNEMIT_N_LEVELS && DYNEMIT_SIMD_LEVELS[i] <= max_level; i++) {
+        max_u32_fn_t fn = max_u32_select(DYNEMIT_SIMD_LEVELS[i]);
         TEST_ASSERT_NOT_NULL(fn);
         TEST_ASSERT_DOUBLE_WITHIN(1e-6, 30.0, fn(d, 3));
     }
@@ -79,8 +79,8 @@ void test_max_u16_all_variants(void)
 {
     uint16_t d[] = {500, 100, 300};
     simd_level_t max_level = detect_simd_level();
-    for (int lvl = SIMD_SCALAR; lvl <= (int)max_level; lvl++) {
-        max_u16_fn_t fn = max_u16_select((simd_level_t)lvl);
+    for (int i = 0; i < DYNEMIT_N_LEVELS && DYNEMIT_SIMD_LEVELS[i] <= max_level; i++) {
+        max_u16_fn_t fn = max_u16_select(DYNEMIT_SIMD_LEVELS[i]);
         TEST_ASSERT_NOT_NULL(fn);
         TEST_ASSERT_DOUBLE_WITHIN(1e-6, 500.0, fn(d, 3));
     }
@@ -88,11 +88,11 @@ void test_max_u16_all_variants(void)
 
 void test_max_select_all_levels(void)
 {
-    for (int lvl = SIMD_SCALAR; lvl <= SIMD_AVX512F; lvl++) {
-        TEST_ASSERT_NOT_NULL(max_f64_select((simd_level_t)lvl));
-        TEST_ASSERT_NOT_NULL(max_u64_select((simd_level_t)lvl));
-        TEST_ASSERT_NOT_NULL(max_u32_select((simd_level_t)lvl));
-        TEST_ASSERT_NOT_NULL(max_u16_select((simd_level_t)lvl));
+    for (int i = 0; i < DYNEMIT_N_LEVELS; i++) {
+        TEST_ASSERT_NOT_NULL(max_f64_select(DYNEMIT_SIMD_LEVELS[i]));
+        TEST_ASSERT_NOT_NULL(max_u64_select(DYNEMIT_SIMD_LEVELS[i]));
+        TEST_ASSERT_NOT_NULL(max_u32_select(DYNEMIT_SIMD_LEVELS[i]));
+        TEST_ASSERT_NOT_NULL(max_u16_select(DYNEMIT_SIMD_LEVELS[i]));
     }
 }
 

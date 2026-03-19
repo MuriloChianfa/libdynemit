@@ -1,11 +1,15 @@
 /* SPDX-License-Identifier: BSL-1.0 */
+#if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
+#endif
 #include <stddef.h>
 #include <stdint.h>
 #include <dynemit/max.h>
 #include <dynemit/compiler.h>
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
+#endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
 max_u16_scalar(const uint16_t *data, size_t n)
@@ -17,6 +21,8 @@ max_u16_scalar(const uint16_t *data, size_t n)
         if (data[i] > result) result = data[i];
     return (double)result;
 }
+
+#if defined(__x86_64__) || defined(__i386__)
 
 __attribute__((target("sse2")))
 static double
@@ -78,15 +84,19 @@ max_u16_avx512f(const uint16_t *data, size_t n)
     return max_u16_avx2(data, n);
 }
 
+#endif /* x86 */
+
 max_u16_fn_t
 max_u16_select(simd_level_t level)
 {
     switch (level) {
+#if defined(__x86_64__) || defined(__i386__)
     case SIMD_AVX512F: return max_u16_avx512f;
     case SIMD_AVX2:    return max_u16_avx2;
     case SIMD_AVX:     return max_u16_avx;
     case SIMD_SSE4_2:  return max_u16_sse42;
     case SIMD_SSE2:    return max_u16_sse2;
+#endif
     case SIMD_SCALAR:
     default:           return max_u16_scalar;
     }
@@ -98,6 +108,8 @@ max_u16_resolver(void)
     return max_u16_select(detect_simd_level());
 }
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
+#endif
 double max_u16(const uint16_t *data, size_t n)
     __attribute__((ifunc("max_u16_resolver")));

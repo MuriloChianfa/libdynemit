@@ -3,6 +3,11 @@
 #include <stddef.h>
 #include <stdatomic.h>
 
+#if defined(__aarch64__)
+#include <sys/auxv.h>
+#include <asm/hwcap.h>
+#endif
+
 void
 cpuid_x86(uint32_t leaf, uint32_t subleaf,
           uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
@@ -43,9 +48,12 @@ xgetbv_x86(uint32_t xcr)
 simd_level_t
 detect_simd_level(void)
 {
-#if !(defined(__x86_64__) || defined(__i386__))
-    return SIMD_SCALAR; // non-x86
-#else
+#if defined(__aarch64__)
+    unsigned long hwcap = getauxval(AT_HWCAP);
+    if (hwcap & HWCAP_ASIMD)
+        return SIMD_NEON;
+    return SIMD_SCALAR;
+#elif defined(__x86_64__) || defined(__i386__)
     uint32_t eax, ebx, ecx, edx;
     cpuid_x86(0, 0, &eax, &ebx, &ecx, &edx);
     if (eax == 0)
@@ -77,26 +85,24 @@ detect_simd_level(void)
     if (sse42) return SIMD_SSE4_2;
     if (sse2) return SIMD_SSE2;
     return SIMD_SCALAR;
+#else
+    return SIMD_SCALAR;
 #endif
 }
 
 simd_level_t
 detect_simd_level_ts(void)
 {
-    // Use -1 as sentinel for "not yet initialized"
-    // Valid simd_level_t values are 0-5 (SIMD_SCALAR to SIMD_AVX512F)
+    // Sentinel for "not yet initialized"
     static _Atomic int cached_level = -1;
     
     int level = atomic_load_explicit(&cached_level, memory_order_acquire);
     
     if (level < 0) {
-        // Not yet initialized - detect now
         simd_level_t detected = detect_simd_level();
         
-        // Try to cache it (race is okay - all threads will get same result)
         int expected = -1;
         if (atomic_compare_exchange_strong(&cached_level, &expected, (int)detected)) {
-            // We won the race
             level = (int)detected;
         } else {
             // Someone else cached it first, use their value
@@ -116,6 +122,7 @@ simd_level_name(simd_level_t level)
         case SIMD_AVX:     return "AVX";
         case SIMD_SSE4_2:  return "SSE4.2";
         case SIMD_SSE2:    return "SSE2";
+        case SIMD_NEON:    return "NEON";
         case SIMD_SCALAR:  return "Scalar";
         default:           return "Unknown";
     }

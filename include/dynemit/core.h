@@ -14,14 +14,16 @@ void cpuid_x86(uint32_t leaf, uint32_t subleaf,
 
 uint64_t xgetbv_x86(uint32_t xcr);
 
-// SIMD levels
 typedef enum {
+    // x86
     SIMD_SCALAR = 0,
     SIMD_SSE2 = 1,
     SIMD_SSE4_2 = 2,
     SIMD_AVX = 3,
     SIMD_AVX2 = 4,
-    SIMD_AVX512F = 5
+    SIMD_AVX512F = 5,
+    // AArch64
+    SIMD_NEON = 10
 } simd_level_t;
 
 /**
@@ -37,7 +39,7 @@ typedef enum {
  * instead, which caches the result.
  * 
  * @return The highest supported SIMD level, from SIMD_SCALAR (baseline) to
- *         SIMD_AVX512F (most advanced). On non-x86 architectures, returns SIMD_SCALAR.
+ *         SIMD_AVX512F (most advanced) on x86 or SIMD_NEON on AArch64.
  * @see detect_simd_level_ts() for cached, thread-safe version
  */
 simd_level_t detect_simd_level(void);
@@ -64,6 +66,26 @@ simd_level_t detect_simd_level(void);
 simd_level_t detect_simd_level_ts(void);
 
 const char *simd_level_name(simd_level_t level);
+
+/**
+ * Architecture-specific table of all SIMD levels supported by this build.
+ * Useful for iterating over levels in tests and benchmarks.
+ */
+#if defined(__x86_64__) || defined(__i386__)
+static const simd_level_t DYNEMIT_SIMD_LEVELS[] = {
+    SIMD_SCALAR, SIMD_SSE2, SIMD_SSE4_2, SIMD_AVX, SIMD_AVX2, SIMD_AVX512F
+};
+#elif defined(__aarch64__)
+static const simd_level_t DYNEMIT_SIMD_LEVELS[] = {
+    SIMD_SCALAR, SIMD_NEON
+};
+#else
+static const simd_level_t DYNEMIT_SIMD_LEVELS[] = {
+    SIMD_SCALAR
+};
+#endif
+#define DYNEMIT_N_LEVELS \
+    ((int)(sizeof(DYNEMIT_SIMD_LEVELS) / sizeof(DYNEMIT_SIMD_LEVELS[0])))
 
 /**
  * Get list of available features in this build.
