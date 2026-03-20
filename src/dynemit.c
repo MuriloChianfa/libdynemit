@@ -6,6 +6,12 @@
 #if defined(__aarch64__)
 #include <sys/auxv.h>
 #include <asm/hwcap.h>
+#ifndef HWCAP_SVE
+#define HWCAP_SVE (1 << 22)
+#endif
+#ifndef HWCAP2_SVE2
+#define HWCAP2_SVE2 (1 << 1)
+#endif
 #endif
 
 void
@@ -49,7 +55,12 @@ simd_level_t
 detect_simd_level(void)
 {
 #if defined(__aarch64__)
-    unsigned long hwcap = getauxval(AT_HWCAP);
+    unsigned long hwcap  = getauxval(AT_HWCAP);
+    unsigned long hwcap2 = getauxval(AT_HWCAP2);
+    if ((hwcap & HWCAP_SVE) && (hwcap2 & HWCAP2_SVE2))
+        return SIMD_SVE2;
+    if (hwcap & HWCAP_SVE)
+        return SIMD_SVE;
     if (hwcap & HWCAP_ASIMD)
         return SIMD_NEON;
     return SIMD_SCALAR;
@@ -122,6 +133,8 @@ simd_level_name(simd_level_t level)
         case SIMD_AVX:     return "AVX";
         case SIMD_SSE4_2:  return "SSE4.2";
         case SIMD_SSE2:    return "SSE2";
+        case SIMD_SVE2:    return "SVE2";
+        case SIMD_SVE:     return "SVE";
         case SIMD_NEON:    return "NEON";
         case SIMD_SCALAR:  return "Scalar";
         default:           return "Unknown";

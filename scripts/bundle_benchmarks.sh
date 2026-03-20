@@ -1,11 +1,15 @@
 #!/bin/bash
 # Build statically-linked benchmark binaries and package them into a portable
-# tar.gz bundle that can run on any x86_64 Linux without dependencies.
+# tar.gz bundle that can run on any arch without dependencies.
 #
 # Usage:
-#   ./scripts/bundle_benchmarks.sh [--strip]
+#   ./scripts/bundle_benchmarks.sh [--arch ARCH] [--strip]
 #
-# Produces: dynemit-bench-x86_64.tar.gz
+# Options:
+#   --arch ARCH  Target architecture: x86_64 (default) or aarch64
+#   --strip      Strip debug symbols from binaries
+#
+# Produces: dynemit-bench-{ARCH}.tar.gz
 
 set -euo pipefail
 
@@ -23,23 +27,39 @@ FEATURES=(add concentration entropy gini hhi hill histogram kurtosis
           max mean min mul simpson skewness sub sum topk variance)
 
 STRIP_BINS=0
+TARGET_ARCH="x86_64"
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --strip) STRIP_BINS=1; shift ;;
+        --arch)  TARGET_ARCH="$2"; shift 2 ;;
         -h|--help)
-            echo "Usage: $0 [--strip]"
-            echo "  --strip   Strip debug symbols from binaries (smaller bundle)"
+            echo "Usage: $0 [--arch ARCH] [--strip]"
+            echo "  --arch ARCH  Target: x86_64 (default) or aarch64"
+            echo "  --strip      Strip debug symbols from binaries"
             exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
 
-BUILD_DIR="build-static"
+if [[ "$TARGET_ARCH" != "x86_64" && "$TARGET_ARCH" != "aarch64" ]]; then
+    echo -e "${RED}Error: unsupported architecture '${TARGET_ARCH}'. Use x86_64 or aarch64.${NC}"
+    exit 1
+fi
+
+BUILD_DIR="build-static-${TARGET_ARCH}"
 BUNDLE="dynemit-bench"
-TARBALL="${BUNDLE}-x86_64.tar.gz"
+TARBALL="${BUNDLE}-${TARGET_ARCH}.tar.gz"
+
+CMAKE_EXTRA_ARGS=()
+STRIP_CMD="strip"
+if [[ "$TARGET_ARCH" == "aarch64" ]]; then
+    CMAKE_EXTRA_ARGS+=(--toolchain cmake/aarch64-linux-gnu.cmake)
+    STRIP_CMD="aarch64-linux-gnu-strip"
+fi
 
 echo ""
-echo -e "${BOLD}${CYAN}=== Building portable benchmark bundle ===${NC}"
+echo -e "${BOLD}${CYAN}=== Building portable benchmark bundle (${TARGET_ARCH}) ===${NC}"
 echo ""
 
 # --- Build static binaries ---
@@ -47,6 +67,7 @@ echo -e "${CYAN}[1/4] Configuring static build...${NC}"
 cmake -B "$BUILD_DIR" \
     -DCMAKE_BUILD_TYPE=Release \
     -DDYNEMIT_STATIC_BENCHMARKS=ON \
+    "${CMAKE_EXTRA_ARGS[@]}" \
     -Wno-dev > /dev/null 2>&1
 echo -e "  ${GREEN}done${NC}"
 
@@ -54,7 +75,7 @@ echo -e "${CYAN}[2/4] Compiling...${NC}"
 cmake --build "$BUILD_DIR" -j"$(nproc)" > /dev/null 2>&1
 echo -e "  ${GREEN}done${NC}"
 
-# --- Verify all binaries are static ---
+# --- Verify all binaries exist ---
 MISSING=0
 for feat in "${FEATURES[@]}"; do
     BIN="${BUILD_DIR}/features/${feat}/bench_${feat}"
@@ -71,13 +92,13 @@ fi
 # --- Stage bundle ---
 echo -e "${CYAN}[3/4] Staging bundle...${NC}"
 rm -rf "$BUNDLE"
-mkdir -p "$BUNDLE/bin" "$BUNDLE/data"
+mkdir -p "$BUNDLE/bin" "$BUNDLE/bench/data"
 
 for feat in "${FEATURES[@]}"; do
     SRC="${BUILD_DIR}/features/${feat}/bench_${feat}"
     cp "$SRC" "$BUNDLE/bin/"
     if [[ "$STRIP_BINS" -eq 1 ]]; then
-        strip "$BUNDLE/bin/bench_${feat}"
+        $STRIP_CMD "$BUNDLE/bin/bench_${feat}"
     fi
 done
 
@@ -86,7 +107,11 @@ SAMPLE=$(file "$BUNDLE/bin/bench_add")
 if [[ "$SAMPLE" != *"statically linked"* ]]; then
     echo -e "${RED}Warning: bench_add is not statically linked!${NC}"
     echo "  $SAMPLE"
-    echo "  You may need glibc-static / libc6-dev installed."
+    if [[ "$TARGET_ARCH" == "aarch64" ]]; then
+        echo "  You may need libc6-dev-arm64-cross installed."
+    else
+        echo "  You may need glibc-static / libc6-dev installed."
+    fi
     exit 1
 fi
 
@@ -97,12 +122,13 @@ cat > "$BUNDLE/run.sh" << 'RUNNER_EOF'
 # No build tools or source tree required -- just static binaries.
 #
 # Usage:
-#   sudo ./run.sh [--cpu CORE] [--levels LEVELS]
+#   sudo ./run.sh [--cpu CORE] [--levels LEVELS] [--features FEATURES]
 #
 # Options:
-#   --cpu CORE       Pin to this CPU core (default: last physical core)
-#   --levels LEVELS  Comma-separated SIMD levels to test
-#                    (default: scalar,sse2,sse4.2,avx,avx2,avx512f)
+#   --cpu CORE          Pin to this CPU core (default: last physical core)
+#   --levels LEVELS     Comma-separated SIMD levels to test
+#                       (auto-detected from architecture if not specified)
+#   --features FEATURES Comma-separated feature names (default: all)
 
 set -euo pipefail
 
@@ -117,32 +143,60 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-FEATURES=(add concentration entropy gini hhi hill histogram kurtosis
-          max mean min mul simpson skewness sub sum topk variance)
+ALL_FEATURES=(add concentration entropy gini hhi hill histogram kurtosis
+              max mean min mul simpson skewness sub sum topk variance)
 
 PIN_CPU=""
-SIMD_LEVELS_STR="scalar,sse2,sse4.2,avx,avx2,avx512f"
+SIMD_LEVELS_STR=""
+FEATURES_STR=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --cpu)    PIN_CPU="$2"; shift 2 ;;
-        --levels) SIMD_LEVELS_STR="$2"; shift 2 ;;
+        --cpu)      PIN_CPU="$2"; shift 2 ;;
+        --levels)   SIMD_LEVELS_STR="$2"; shift 2 ;;
+        --features) FEATURES_STR="$2"; shift 2 ;;
         -h|--help)
-            echo "Usage: sudo $0 [--cpu CORE] [--levels LEVELS]"
+            echo "Usage: sudo $0 [--cpu CORE] [--levels LEVELS] [--features FEATURES]"
             echo ""
             echo "Options:"
-            echo "  --cpu CORE       Pin to CPU core (default: last physical core)"
-            echo "  --levels LEVELS  Comma-separated: scalar,sse2,sse4.2,avx,avx2,avx512f"
+            echo "  --cpu CORE          Pin to CPU core (default: last physical core)"
+            echo "  --levels LEVELS     Comma-separated SIMD levels:"
+            echo "                        x86: scalar,sse2,sse4.2,avx,avx2,avx512f"
+            echo "                        ARM: scalar,neon,sve,sve2"
+            echo "  --features FEATURES Comma-separated features (default: all)"
             exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
 
+# Auto-detect default SIMD levels based on architecture
+if [[ -z "$SIMD_LEVELS_STR" ]]; then
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64|i686)  SIMD_LEVELS_STR="scalar,sse2,sse4.2,avx,avx2,avx512f" ;;
+        aarch64|arm*) SIMD_LEVELS_STR="scalar,neon,sve,sve2" ;;
+        *)            SIMD_LEVELS_STR="scalar" ;;
+    esac
+fi
+
 IFS=',' read -ra SIMD_LEVELS <<< "$SIMD_LEVELS_STR"
+
+if [[ -n "$FEATURES_STR" ]]; then
+    IFS=',' read -ra FEATURES <<< "$FEATURES_STR"
+else
+    FEATURES=("${ALL_FEATURES[@]}")
+fi
 
 if [[ -z "$PIN_CPU" ]]; then
     THREADS_PER_CORE=$(lscpu -p=cpu,core | grep -v '^#' | awk -F, '{print $2}' | sort -u | wc -l)
     PIN_CPU=$((THREADS_PER_CORE - 1))
+fi
+
+# Detect CPU name for header display
+CPU_NAME=$(grep 'model name' /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | sed 's/^ *//')
+if [[ -z "$CPU_NAME" ]]; then
+    CPU_NAME=$(lscpu 2>/dev/null | grep 'Vendor ID' | cut -d: -f2 | sed 's/^ *//')
+    CPU_NAME="${CPU_NAME} $(uname -m)"
 fi
 
 echo ""
@@ -150,13 +204,13 @@ echo -e "${BOLD}${BLUE}╔══════════════════
 echo -e "${BOLD}${BLUE}║    libdynemit — Portable Benchmark Runner        ║${NC}"
 echo -e "${BOLD}${BLUE}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "  CPU:          ${GREEN}$(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2 | sed 's/^ *//')${NC}"
+echo -e "  CPU:          ${GREEN}${CPU_NAME}${NC}"
 echo -e "  Pinned core:  ${GREEN}${PIN_CPU}${NC}"
 echo -e "  Priority:     ${GREEN}nice -n -20${NC}"
 echo -e "  Features:     ${GREEN}${#FEATURES[@]}${NC}"
 echo -e "  SIMD levels:  ${GREEN}${SIMD_LEVELS[*]}${NC}"
 echo -e "  Total runs:   ${GREEN}$(( ${#FEATURES[@]} * ${#SIMD_LEVELS[@]} ))${NC}"
-echo -e "  Output:       ${YELLOW}data/${NC}"
+echo -e "  Output:       ${YELLOW}bench/data/${NC}"
 echo ""
 
 # Verify binaries exist
@@ -167,7 +221,7 @@ for feat in "${FEATURES[@]}"; do
     fi
 done
 
-mkdir -p data
+mkdir -p bench/data
 
 TOTAL_START=$(date +%s)
 RUN=0
@@ -189,7 +243,7 @@ for feat in "${FEATURES[@]}"; do
 
         LVL_PAT="${lvl//./_}"
         LVL_PAT="${LVL_PAT/avx512f/avx_512f}"
-        CSV=$(ls -t "data/${feat}_"*"_${LVL_PAT}"*.csv 2>/dev/null | head -1 || true)
+        CSV=$(ls -t "bench/data/${feat}_"*"_${LVL_PAT}"*.csv 2>/dev/null | head -1 || true)
         if [[ -n "$CSV" && -f "$CSV" ]]; then
             LAST=$(tail -1 "$CSV")
             GFLOPS=$(echo "$LAST" | cut -d, -f8)
@@ -205,10 +259,10 @@ done
 TOTAL_END=$(date +%s)
 echo -e "${GREEN}All benchmarks finished in $((TOTAL_END - TOTAL_START)) seconds.${NC}"
 echo ""
-echo -e "Results in ${YELLOW}data/*.csv${NC}"
+echo -e "Results in ${YELLOW}bench/data/*.csv${NC}"
 echo ""
 echo "Next steps:"
-echo "  1. Copy data/*.csv back to your build machine's bench/data/"
+echo "  1. Copy bench/data/*.csv back to your build machine's bench/data/"
 echo "  2. Run:  bash scripts/run_all_benchmarks.sh --charts-only"
 echo ""
 RUNNER_EOF
@@ -224,13 +278,13 @@ SIZE=$(du -h "$TARBALL" | cut -f1)
 echo -e "  ${GREEN}done${NC}  ${TARBALL} (${SIZE})"
 
 echo ""
-echo -e "${BOLD}${GREEN}Bundle ready!${NC}"
+echo -e "${BOLD}${GREEN}Bundle ready!${NC}  (${TARGET_ARCH})"
 echo ""
 echo "Usage:"
 echo "  scp ${TARBALL} server:"
 echo "  ssh server 'tar xzf ${TARBALL} && cd ${BUNDLE} && sudo ./run.sh --cpu 0'"
 echo ""
 echo "Then copy results back:"
-echo "  scp 'server:${BUNDLE}/data/*.csv' bench/data/"
+echo "  scp 'server:${BUNDLE}/bench/data/*.csv' bench/data/"
 echo "  bash scripts/run_all_benchmarks.sh --charts-only"
 echo ""

@@ -69,7 +69,8 @@ def read_csv_data(filepath: str) -> Tuple[List[int], List[float], List[float], L
 
 
 def plot_benchmark(datasets: Dict[str, Tuple], output_path: str, title: str, 
-                  metric: str = 'time', auto_title: bool = False):
+                  metric: str = 'time', auto_title: bool = False,
+                  xlabel_override: str = None):
     """
     Generate benchmark comparison chart.
     
@@ -166,7 +167,7 @@ def plot_benchmark(datasets: Dict[str, Tuple], output_path: str, title: str,
             title = f"Vector Multiply Performance - {len(cpu_names)} CPU Comparison"
     
     # Labels and title
-    xlabel = 'Number of elements (32-bit floats, 4 bytes each)'
+    xlabel = xlabel_override if xlabel_override else 'Number of elements'
     plt.xlabel(xlabel, fontsize=11)
     
     if metric == 'time':
@@ -370,6 +371,12 @@ Examples:
         help='Metric to plot: time (ms) or gflops (default: time)'
     )
     
+    parser.add_argument(
+        '--xlabel', '-x',
+        default=None,
+        help='Custom x-axis label (default: auto-generated from data)'
+    )
+    
     args = parser.parse_args()
     
     # Collect all input files
@@ -412,7 +419,7 @@ Examples:
     
     # Generate the plot
     print(f"\nGenerating chart...")
-    plot_benchmark(datasets, args.output, title, args.metric, auto_title)
+    plot_benchmark(datasets, args.output, title, args.metric, auto_title, args.xlabel)
     print("Done!")
 
 

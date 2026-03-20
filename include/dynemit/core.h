@@ -23,7 +23,9 @@ typedef enum {
     SIMD_AVX2 = 4,
     SIMD_AVX512F = 5,
     // AArch64
-    SIMD_NEON = 10
+    SIMD_NEON = 10,
+    SIMD_SVE = 11,
+    SIMD_SVE2 = 12
 } simd_level_t;
 
 /**
@@ -39,7 +41,7 @@ typedef enum {
  * instead, which caches the result.
  * 
  * @return The highest supported SIMD level, from SIMD_SCALAR (baseline) to
- *         SIMD_AVX512F (most advanced) on x86 or SIMD_NEON on AArch64.
+ *         SIMD_AVX512F on x86 or SIMD_SVE2 on AArch64.
  * @see detect_simd_level_ts() for cached, thread-safe version
  */
 simd_level_t detect_simd_level(void);
@@ -77,7 +79,7 @@ static const simd_level_t DYNEMIT_SIMD_LEVELS[] = {
 };
 #elif defined(__aarch64__)
 static const simd_level_t DYNEMIT_SIMD_LEVELS[] = {
-    SIMD_SCALAR, SIMD_NEON
+    SIMD_SCALAR, SIMD_NEON, SIMD_SVE, SIMD_SVE2
 };
 #else
 static const simd_level_t DYNEMIT_SIMD_LEVELS[] = {

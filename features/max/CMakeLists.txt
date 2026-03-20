@@ -26,3 +26,7 @@ add_test(NAME test_max COMMAND test_max)
 add_executable(bench_max benchmarks/bench_max.c)
 target_include_directories(bench_max PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
 target_link_libraries(bench_max PRIVATE dynemit_max dynemit_core m)
+
+add_executable(bench_max_u32 benchmarks/bench_max_u32.c)
+target_include_directories(bench_max_u32 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_max_u32 PRIVATE dynemit_max dynemit_core m)

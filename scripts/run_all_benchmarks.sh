@@ -26,7 +26,13 @@ cd "$PROJECT_ROOT"
 FEATURES=(add concentration entropy gini hhi hill histogram kurtosis
           max mean min mul simpson skewness sub sum topk variance)
 
-SIMD_LEVELS=(scalar sse2 sse4.2 avx avx2 avx512f)
+# Auto-detect SIMD levels based on host architecture
+HOST_ARCH=$(uname -m)
+case "$HOST_ARCH" in
+    x86_64|i686)  SIMD_LEVELS=(scalar sse2 sse4.2 avx avx2 avx512f) ;;
+    aarch64|arm*) SIMD_LEVELS=(scalar neon sve sve2) ;;
+    *)            SIMD_LEVELS=(scalar) ;;
+esac
 
 OUTPUT_DIR="bench/data"
 IMG_DIR="docs/img"
@@ -158,7 +164,7 @@ fi
 simd_slug_from_csv() {
     local base
     base=$(basename "$1" .csv)
-    for s in avx_512f sse4_2 avx2 avx sse2 scalar; do
+    for s in avx_512f sse4_2 avx2 avx sse2 sve2 sve neon scalar; do
         if [[ "$base" == *"_${s}" ]]; then echo "$s"; return; fi
     done
     echo "unknown"
@@ -173,6 +179,9 @@ simd_display() {
         avx)      echo "AVX" ;;
         avx2)     echo "AVX2" ;;
         avx_512f) echo "AVX-512F" ;;
+        neon)     echo "NEON" ;;
+        sve)      echo "SVE" ;;
+        sve2)     echo "SVE2" ;;
         *)        echo "$1" ;;
     esac
 }
@@ -182,7 +191,7 @@ cpu_slug_from_csv() {
     local base feat="$2"
     base=$(basename "$1" .csv)
     base="${base#${feat}_}"
-    for s in avx_512f sse4_2 avx2 avx sse2 scalar; do
+    for s in avx_512f sse4_2 avx2 avx sse2 sve2 sve neon scalar; do
         if [[ "$base" == *"_${s}" ]]; then
             base="${base%_${s}}"
             break
@@ -202,14 +211,24 @@ cpu_display() {
                     -e 's/\bepyc\b/EPYC/gI' \
                     -e 's/\b9950x3d\b/9950X3D/gI' \
                     -e 's/\b7900x\b/7900X/gI' \
-                    -e 's/\b13900k\b/13900K/gI'
+                    -e 's/\b13900k\b/13900K/gI' \
+                    -e 's/\barm\b/ARM/gI' \
+                    -e 's/\bneoverse\b/Neoverse/gI' \
+                    -e 's/\bcortex\b/Cortex/gI' \
+                    -e 's/\bapple\b/Apple/gI' \
+                    -e 's/\bv1\b/V1/g' \
+                    -e 's/\bv2\b/V2/g' \
+                    -e 's/\bn1\b/N1/g' \
+                    -e 's/\bn2\b/N2/g'
 }
 
 # --- Helper: SIMD priority (higher = better) ---
 simd_priority() {
     case "$1" in
         avx_512f) echo 6 ;; avx2) echo 5 ;; avx) echo 4 ;;
-        sse4_2)   echo 3 ;; sse2) echo 2 ;; scalar) echo 1 ;;
+        sse4_2)   echo 3 ;; sse2) echo 2 ;;
+        sve2)     echo 4 ;; sve)  echo 3 ;; neon) echo 2 ;;
+        scalar)   echo 1 ;;
         *)        echo 0 ;;
     esac
 }
@@ -274,7 +293,7 @@ for feat in "${FEATURES[@]}"; do
         cpu_dash="${cpu_slug//_/-}"
 
         SIMD_ARGS=()
-        SIMD_ORDER=(scalar sse2 sse4_2 avx avx2 avx_512f)
+        SIMD_ORDER=(scalar sse2 sse4_2 avx avx2 avx_512f neon sve sve2)
         for s in "${SIMD_ORDER[@]}"; do
             CSV="${OUTPUT_DIR}/${feat}_${cpu_slug}_${s}.csv"
             if [[ -f "$CSV" ]]; then
@@ -297,7 +316,7 @@ for feat in "${FEATURES[@]}"; do
     for cpu_slug in "${CPU_LIST[@]}"; do
         cpu_name=$(cpu_display "$cpu_slug")
         BEST_CSV="" BEST_PRI=0
-        for s in scalar sse2 sse4_2 avx avx2 avx_512f; do
+        for s in scalar sse2 sse4_2 avx avx2 avx_512f neon sve sve2; do
             CSV="${OUTPUT_DIR}/${feat}_${cpu_slug}_${s}.csv"
             if [[ -f "$CSV" ]]; then
                 PRI=$(simd_priority "$s")

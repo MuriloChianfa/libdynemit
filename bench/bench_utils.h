@@ -179,6 +179,73 @@ bench_human_row(size_t n, int iters, int trials,
 
 /* ---- CPU model detection ---- */
 
+typedef struct {
+    unsigned impl;
+    unsigned part;
+    const char *name;
+} bench_arm_cpu_t;
+
+static const bench_arm_cpu_t bench_arm_cpus[] = {
+    /* ARM Ltd (0x41) */
+    { 0x41, 0xd4f, "arm_neoverse_v2" },
+    { 0x41, 0xd49, "arm_neoverse_n2" },
+    { 0x41, 0xd40, "arm_neoverse_v1" },
+    { 0x41, 0xd0c, "arm_neoverse_n1" },
+    { 0x41, 0xd0b, "arm_cortex_a76"  },
+    { 0x41, 0xd05, "arm_cortex_a55"  },
+    { 0x41, 0xd07, "arm_cortex_a57"  },
+    { 0x41, 0xd08, "arm_cortex_a72"  },
+    { 0x41, 0xd09, "arm_cortex_a73"  },
+    { 0x41, 0xd0a, "arm_cortex_a75"  },
+    { 0x41, 0xd0d, "arm_cortex_a77"  },
+    { 0x41, 0xd41, "arm_cortex_a78"  },
+    { 0x41, 0xd44, "arm_cortex_x1"   },
+    /* Apple (0x61) */
+    { 0x61, 0x022, "apple_m1_icestorm"  },
+    { 0x61, 0x023, "apple_m1_firestorm" },
+    { 0x61, 0x032, "apple_m2_blizzard"  },
+    { 0x61, 0x033, "apple_m2_avalanche" },
+    { 0, 0, NULL }
+};
+
+#if defined(__aarch64__)
+static void
+bench_get_cpu_model_arm(char *buffer, size_t bufsize)
+{
+    FILE *fp = fopen("/proc/cpuinfo", "r");
+    if (!fp) { snprintf(buffer, bufsize, "unknown_arm_cpu"); return; }
+
+    char line[256];
+    unsigned impl = 0, part = 0;
+    int have_impl = 0, have_part = 0;
+
+    while (fgets(line, sizeof(line), fp)) {
+        if (!have_impl && strncmp(line, "CPU implementer", 15) == 0) {
+            char *colon = strchr(line, ':');
+            if (colon) { impl = (unsigned)strtoul(colon + 1, NULL, 0); have_impl = 1; }
+        }
+        if (!have_part && strncmp(line, "CPU part", 8) == 0) {
+            char *colon = strchr(line, ':');
+            if (colon) { part = (unsigned)strtoul(colon + 1, NULL, 0); have_part = 1; }
+        }
+        if (have_impl && have_part) break;
+    }
+    fclose(fp);
+
+    if (have_impl && have_part) {
+        for (int i = 0; bench_arm_cpus[i].name; i++) {
+            if (bench_arm_cpus[i].impl == impl && bench_arm_cpus[i].part == part) {
+                snprintf(buffer, bufsize, "%s", bench_arm_cpus[i].name);
+                return;
+            }
+        }
+        snprintf(buffer, bufsize, "arm_%02x_%03x", impl, part);
+        return;
+    }
+    snprintf(buffer, bufsize, "unknown_arm_cpu");
+}
+#endif
+
 static void
 bench_get_cpu_model(char *buffer, size_t bufsize)
 {
@@ -227,7 +294,14 @@ bench_get_cpu_model(char *buffer, size_t bufsize)
         break;
     }
     fclose(fp);
-    if (!found) snprintf(buffer, bufsize, "unknown_cpu");
+
+    if (!found) {
+#if defined(__aarch64__)
+        bench_get_cpu_model_arm(buffer, bufsize);
+#else
+        snprintf(buffer, bufsize, "unknown_cpu");
+#endif
+    }
 }
 
 /* ---- CLI argument parsing ---- */
@@ -248,6 +322,9 @@ bench_parse_level(const char *s, simd_level_t *out)
     if (strcmp(s, "avx")     == 0) { *out = SIMD_AVX;     return 0; }
     if (strcmp(s, "avx2")    == 0) { *out = SIMD_AVX2;    return 0; }
     if (strcmp(s, "avx512f") == 0) { *out = SIMD_AVX512F; return 0; }
+    if (strcmp(s, "neon")    == 0) { *out = SIMD_NEON;    return 0; }
+    if (strcmp(s, "sve")     == 0) { *out = SIMD_SVE;     return 0; }
+    if (strcmp(s, "sve2")    == 0) { *out = SIMD_SVE2;    return 0; }
     return -1;
 }
 
@@ -270,7 +347,7 @@ bench_parse_opts(int argc, char **argv, bench_opts_t *opts,
             i++;
             if (bench_parse_level(argv[i], &opts->force_level) != 0) {
                 fprintf(stderr, "Error: Unknown SIMD level '%s'\n", argv[i]);
-                fprintf(stderr, "Valid: scalar, sse2, sse4.2, avx, avx2, avx512f\n");
+                fprintf(stderr, "Valid: scalar, sse2, sse4.2, avx, avx2, avx512f, neon, sve, sve2\n");
                 return -1;
             }
             opts->force_level_set = 1;
@@ -279,8 +356,9 @@ bench_parse_opts(int argc, char **argv, bench_opts_t *opts,
             printf("\n%s Benchmark\n\n", bench_name);
             printf("Options:\n");
             printf("  --csv              CSV output to stdout\n");
-            printf("  --force-level LVL  Force SIMD level "
-                   "(scalar, sse2, sse4.2, avx, avx2, avx512f)\n");
+            printf("  --force-level LVL  Force SIMD level\n"
+                   "                     x86: scalar, sse2, sse4.2, avx, avx2, avx512f\n"
+                   "                     ARM: scalar, neon, sve, sve2\n");
             printf("  --auto-detect      Auto-detect CPU, write CSV to file\n");
             printf("  --help, -h         Show this help\n");
             return 1;
