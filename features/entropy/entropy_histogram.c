@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#include "fast_log2.h"
 #elif defined(__aarch64__)
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include "fast_log2.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <dynemit/entropy.h>
