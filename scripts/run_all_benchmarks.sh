@@ -29,11 +29,12 @@ cd "$PROJECT_ROOT"
 declare -A FEATURE_VARIANTS
 FEATURE_VARIANTS[add]="f32"
 FEATURE_VARIANTS[concentration]="f64"
-FEATURE_VARIANTS[entropy]="u16"
+FEATURE_VARIANTS[entropy]="u16 u32 histogram"
 FEATURE_VARIANTS[gini]="f64"
 FEATURE_VARIANTS[hhi]="u16"
 FEATURE_VARIANTS[hill]="f64"
 FEATURE_VARIANTS[histogram]="u16"
+FEATURE_VARIANTS[log2]="f64"
 FEATURE_VARIANTS[kurtosis]="f64"
 FEATURE_VARIANTS[max]="f64 u32"
 FEATURE_VARIANTS[mean]="f64"
@@ -47,7 +48,7 @@ FEATURE_VARIANTS[topk]="f64"
 FEATURE_VARIANTS[variance]="f64"
 
 FEATURES=(add concentration entropy gini hhi hill histogram kurtosis
-          max mean min mul simpson skewness sub sum topk variance)
+          log2 max mean min mul simpson skewness sub sum topk variance)
 
 # Build flat list of all variant keys (e.g. add_f32 max_f64 max_u32 ...)
 ALL_VARIANTS=()

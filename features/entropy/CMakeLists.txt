@@ -4,7 +4,9 @@
 file(GLOB ENTROPY_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
 
 add_library(entropy_obj OBJECT ${ENTROPY_SOURCES})
-target_include_directories(entropy_obj PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(entropy_obj PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/features/log2)
 target_link_libraries(entropy_obj PUBLIC dynemit_core)
 set_target_properties(entropy_obj PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -26,3 +28,11 @@ add_test(NAME test_entropy COMMAND test_entropy)
 add_executable(bench_entropy_u16 benchmarks/bench_entropy_u16.c)
 target_include_directories(bench_entropy_u16 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
 target_link_libraries(bench_entropy_u16 PRIVATE dynemit_entropy dynemit_core m)
+
+add_executable(bench_entropy_u32 benchmarks/bench_entropy_u32.c)
+target_include_directories(bench_entropy_u32 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_entropy_u32 PRIVATE dynemit_entropy dynemit_core m)
+
+add_executable(bench_entropy_histogram benchmarks/bench_entropy_histogram.c)
+target_include_directories(bench_entropy_histogram PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_entropy_histogram PRIVATE dynemit_entropy dynemit_core m)
