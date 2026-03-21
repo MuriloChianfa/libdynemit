@@ -8,14 +8,20 @@ on:
 
 jobs:
   build-and-test-c:
-    name: C Tests (GCC ${{ matrix.gcc-version }}, ${{ matrix.build-type }})
-    runs-on: ubuntu-latest
+    name: C Tests (GCC ${{ matrix.gcc-version }}, ${{ matrix.build-type }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     container: gcc:${{ matrix.gcc-version }}
     strategy:
       fail-fast: false
       matrix:
         gcc-version: [13, 14, 15]
         build-type: [Debug, Release]
+        arch: [x86_64, aarch64]
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
     
     steps:
     - name: Checkout code
@@ -48,14 +54,20 @@ jobs:
         cmake -B build-list -DLIST_FEATURES=ON || true
 
   build-and-test-cpp:
-    name: C++ Tests (GCC ${{ matrix.gcc-version }}, ${{ matrix.build-type }})
-    runs-on: ubuntu-latest
+    name: C++ Tests (GCC ${{ matrix.gcc-version }}, ${{ matrix.build-type }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     container: gcc:${{ matrix.gcc-version }}
     strategy:
       fail-fast: false
       matrix:
         gcc-version: [13, 14, 15]
         build-type: [Debug, Release]
+        arch: [x86_64, aarch64]
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
     
     steps:
     - name: Checkout code
@@ -84,17 +96,29 @@ jobs:
         ctest --output-on-failure --verbose -R "^test_cpp_"
 
   build-and-test-c-clang:
-    name: C Tests (Clang ${{ matrix.clang-version }}, ${{ matrix.build-type }})
-    runs-on: ubuntu-latest
+    name: C Tests (Clang ${{ matrix.clang-version }}, ${{ matrix.build-type }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         clang-version: [16, 17, 18, 19, 20]
         build-type: [Debug, Release]
+        arch: [x86_64, aarch64]
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Add LLVM apt repository
+      if: matrix.arch == 'aarch64'
+      run: |
+        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+        echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble main" | sudo tee /etc/apt/sources.list.d/llvm.list
 
     - name: Install Clang ${{ matrix.clang-version }}
       run: |
@@ -126,17 +150,29 @@ jobs:
         ctest --output-on-failure --verbose -R "^test_(features|vector_ops|thread_safe_detection|resolver_macro)$"
 
   build-and-test-cpp-clang:
-    name: C++ Tests (Clang ${{ matrix.clang-version }}, ${{ matrix.build-type }})
-    runs-on: ubuntu-latest
+    name: C++ Tests (Clang ${{ matrix.clang-version }}, ${{ matrix.build-type }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         clang-version: [16, 17, 18, 19, 20]
         build-type: [Debug, Release]
+        arch: [x86_64, aarch64]
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Add LLVM apt repository
+      if: matrix.arch == 'aarch64'
+      run: |
+        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+        echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble main" | sudo tee /etc/apt/sources.list.d/llvm.list
 
     - name: Install Clang ${{ matrix.clang-version }}
       run: |
@@ -203,7 +239,7 @@ jobs:
         path: cppcheck-report.txt
 
   simd-verification:
-    name: SIMD Instruction Verification
+    name: SIMD Instruction Verification (x86_64)
     runs-on: ubuntu-latest
     
     steps:
@@ -238,6 +274,42 @@ jobs:
           'objdump -d {} | grep -E "(vpx|vf|vmov|vadd|vmul|vsub)" && echo "Found SIMD in: {}"' \; \
           || echo "Note: Some object files may not contain SIMD instructions (expected for scalar fallbacks)"
 
+  simd-verification-arm:
+    name: SIMD Instruction Verification (aarch64)
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install GCC 13
+      run: |
+        sudo apt update
+        sudo apt install -y gcc-13 g++-13 binutils
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100
+
+    - name: Install CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.25.x'
+
+    - name: Build Release
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13
+        cmake --build build -j$(nproc)
+
+    - name: Check for SIMD instructions
+      run: |
+        chmod +x scripts/check_for_simd.sh
+        ./scripts/check_for_simd.sh || true
+
+    - name: Verify object files contain SIMD
+      run: |
+        echo "=== Checking for ARM SIMD instructions in object files ==="
+        find build -name "*.o" -exec sh -c \
+          'objdump -d {} | grep -E "(ld1|st1|fmla|fmul|fadd|whilelo|ptrue|cnt)" && echo "Found SIMD in: {}"' \; \
+          || echo "Note: Some object files may not contain SIMD instructions (expected for scalar fallbacks)"
+
   build-docs:
     name: Documentation Check
     runs-on: ubuntu-latest
@@ -261,7 +333,7 @@ jobs:
       continue-on-error: true
 
   build-artifacts:
-    name: Build & Archive Artifacts
+    name: Build & Archive Artifacts (x86_64)
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
@@ -294,6 +366,44 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: libdynemit-libraries
+        name: libdynemit-libraries-x86_64
+        path: artifacts/
+        retention-days: 10
+
+  build-artifacts-arm:
+    name: Build & Archive Artifacts (aarch64)
+    runs-on: ubuntu-24.04-arm
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install GCC 13
+      run: |
+        sudo apt update
+        sudo apt install -y gcc-13 g++-13
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100
+
+    - name: Install CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.25.x'
+
+    - name: Build Release
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13
+        cmake --build build -j$(nproc)
+
+    - name: Package libraries
+      run: |
+        mkdir -p artifacts/lib artifacts/include
+        cp -r build/src/*.a build/features/*/*.a artifacts/lib/ || true
+        cp -r include/* artifacts/include/
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: libdynemit-libraries-aarch64
         path: artifacts/
         retention-days: 10
