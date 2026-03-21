@@ -135,7 +135,7 @@ When implementing new SIMD features:
 2. **Use target attributes**: `__attribute__((target("avx2")))`
 3. **Disable auto-vectorization for scalar**: Use `DYNEMIT_NO_AUTOVECTORIZE`
 4. **Use ifunc resolvers**: Implement runtime dispatch with `__attribute__((ifunc(...)))`
-5. **Follow existing patterns**: See `features/vector_add/` or `features/vector_mul/` as examples
+5. **Follow existing patterns**: See `features/add/` or `features/mul/` as examples
 
 See [docs/ADDING_FEATURES.md](../docs/ADDING_FEATURES.md) for detailed instructions.
 
@@ -183,12 +183,12 @@ ctest --verbose
 ### Running Benchmarks
 
 ```bash
-# Run benchmark
-cd build/bench
-./benchmark_vector_mul
+# Run a single feature benchmark
+./build/features/mul/bench_mul_f32
+./build/features/mul/bench_mul_f32 --auto-detect
 
-# Save results
-./benchmark_vector_mul --csv > results.csv
+# Run all benchmarks and generate charts
+sudo ./scripts/run_all_benchmarks.sh
 ```
 
 ## Pull Request Process

@@ -1,0 +1,23 @@
+codecov:
+  require_ci_to_pass: false
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: 70%
+
+ignore:
+  - "tests/"
+  - "bench/"
+  - "docs/"
+  - "scripts/"
+  - "cmake/"
+  - "include/"
+  - "features/*/tests/"
+  - "features/*/benchmarks/"
+  - "src/dynemit_features.c"

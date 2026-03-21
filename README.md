@@ -7,6 +7,7 @@
 [![CMake](https://img.shields.io/badge/CMake-3.16+-green.svg)](https://cmake.org/)
 [![GCC](https://img.shields.io/badge/GCC-13%2B-green.svg)](https://gcc.gnu.org/)
 [![Clang](https://img.shields.io/badge/Clang-16%2B-green.svg)](https://clang.llvm.org/)
+[![arch](https://img.shields.io/badge/arch-x86__64%20%7C%20aarch64-orange.svg)](https://en.wikipedia.org/wiki/Comparison_of_instruction_set_architectures)
 [![License: Boost](https://img.shields.io/badge/License-Boost_1.0-lightblue.svg)](https://www.boost.org/LICENSE_1_0.txt)
 
 libdynemit leverages the ifunc resolver (supported by both GCC and Clang on Linux) to automatically select optimal SIMD implementations at program startup, delivering portable code without sacrificing performance. Thread-safe SIMD detection and dlopen-safe resolver utilities ensure robust operation in multi-threaded applications and dynamic library loading scenarios.
@@ -27,12 +28,25 @@ entropy_u32(data, n);
 
 ## Same build, best performance
 
-Benchmark charts are generated per-feature and per-CPU under `bench/`. After running benchmarks, you will find:
+![Vector Multiply Benchmark](docs/img/benchmark_vector_mul.png)
+*Benchmark comparing vector multiplication performance across different CPU architectures using the same build binary. The library automatically detected and utilized each CPU's highest supported SIMD instruction set (AVX-512F, AVX2, AVX or SSE4.2) at runtime. Lower execution time indicates better performance. Each data point represents the median of 10 trials, with error bars showing ±1 standard deviation.*
 
-- **CPU comparison** charts at `bench/features/{variant}/timing.png` and `throughput.png`
-- **SIMD comparison** charts at `bench/cpus/{arch}/{cpu}/features/{variant}/timing.png` and `throughput.png`
+## Forced SIMD instructions without dynamic dispatch
 
-Run `sudo ./scripts/run_all_benchmarks.sh` to generate all data and charts. See [docs/BENCHMARKING.md](docs/BENCHMARKING.md) for details.
+<table>
+<tr>
+<td align="center"><b>x86_64</b> — AMD Ryzen 9 9950X3D</td>
+<td align="center"><b>aarch64</b> — ARM Neoverse V2</td>
+</tr>
+<tr>
+<td><img src="bench/cpus/x86_64/amd_ryzen_9_9950x3d/features/max_u32/timing.png" alt="max_u32 SIMD timings on x86_64" width="100%"></td>
+<td><img src="bench/cpus/aarch64/arm_neoverse_v2/features/max_u32/timing.png" alt="max_u32 SIMD timings on aarch64" width="100%"></td>
+</tr>
+</table>
+
+*Performance scaling of `max_u32` across SIMD levels on two architectures, x86_64 (Scalar → SSE2 → SSE4.2 → AVX → AVX2 → AVX-512F) and aarch64 (Scalar → NEON → SVE → SVE2). Each implementation is compiled into the same binary and the ifunc resolver selects the best one at startup. Lower execution time is better, each point is the median of 3 trials with ±1 standard deviation error bars.*
+
+
 
 ## Installation
 
@@ -222,7 +236,7 @@ sudo make install
 
 Currently the library ships SIMD-accelerated features organized into four categories. Every function automatically dispatches to the best available instruction set at program startup.
 
-<details open>
+<details>
 <summary><b>Vector Operations</b></summary>
 
 Element-wise operations on `float` arrays.
@@ -256,7 +270,7 @@ Convenience header `<dynemit/stats.h>` includes all of the above.
 
 </details>
 
-<details open>
+<details>
 <summary><b>Distribution & Diversity Metrics</b></summary>
 
 | Function | Description |
