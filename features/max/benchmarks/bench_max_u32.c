@@ -4,7 +4,7 @@
 static void
 bench_size(size_t n, int csv, simd_level_t lvl, max_u32_fn_t func)
 {
-    const int trials = 10;
+    const int trials = BENCH_TRIALS;
     int iters = bench_iters_for_size(n);
     uint32_t *data = aligned_alloc(64, n * sizeof(uint32_t));
     if (!data) return;
@@ -13,7 +13,7 @@ bench_size(size_t n, int csv, simd_level_t lvl, max_u32_fn_t func)
         data[i] = (uint32_t)(i ^ (i >> 3));
     for (int w = 0; w < 10; w++) func(data, n);
 
-    double times[10];
+    double times[BENCH_TRIALS];
     for (int t = 0; t < trials; t++) {
         double t0 = bench_now_sec();
         for (int i = 0; i < iters; i++) func(data, n);

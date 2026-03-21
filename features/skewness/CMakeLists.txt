@@ -23,6 +23,6 @@ target_link_libraries(test_skewness PRIVATE dynemit_skewness dynemit_mean dynemi
 add_test(NAME test_skewness COMMAND test_skewness)
 
 # Benchmarks
-add_executable(bench_skewness benchmarks/bench_skewness.c)
-target_include_directories(bench_skewness PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_skewness PRIVATE dynemit_skewness dynemit_mean dynemit_core m)
+add_executable(bench_skewness_f64 benchmarks/bench_skewness_f64.c)
+target_include_directories(bench_skewness_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_skewness_f64 PRIVATE dynemit_skewness dynemit_mean dynemit_core m)

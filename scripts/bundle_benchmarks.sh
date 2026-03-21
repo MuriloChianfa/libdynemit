@@ -23,6 +23,27 @@ NC='\033[0m'
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# Feature -> space-separated type variants with benchmark binaries.
+declare -A FEATURE_VARIANTS
+FEATURE_VARIANTS[add]="f32"
+FEATURE_VARIANTS[concentration]="f64"
+FEATURE_VARIANTS[entropy]="u16"
+FEATURE_VARIANTS[gini]="f64"
+FEATURE_VARIANTS[hhi]="u16"
+FEATURE_VARIANTS[hill]="f64"
+FEATURE_VARIANTS[histogram]="u16"
+FEATURE_VARIANTS[kurtosis]="f64"
+FEATURE_VARIANTS[max]="f64 u32"
+FEATURE_VARIANTS[mean]="f64"
+FEATURE_VARIANTS[min]="f64"
+FEATURE_VARIANTS[mul]="f32"
+FEATURE_VARIANTS[simpson]="u16"
+FEATURE_VARIANTS[skewness]="f64"
+FEATURE_VARIANTS[sub]="f32"
+FEATURE_VARIANTS[sum]="f64"
+FEATURE_VARIANTS[topk]="f64"
+FEATURE_VARIANTS[variance]="f64"
+
 FEATURES=(add concentration entropy gini hhi hill histogram kurtosis
           max mean min mul simpson skewness sub sum topk variance)
 
@@ -77,12 +98,16 @@ echo -e "  ${GREEN}done${NC}"
 
 # --- Verify all binaries exist ---
 MISSING=0
+BIN_COUNT=0
 for feat in "${FEATURES[@]}"; do
-    BIN="${BUILD_DIR}/features/${feat}/bench_${feat}"
-    if [[ ! -x "$BIN" ]]; then
-        echo -e "  ${RED}Missing:${NC} $BIN"
-        MISSING=1
-    fi
+    for var in ${FEATURE_VARIANTS[$feat]}; do
+        BIN="${BUILD_DIR}/features/${feat}/bench_${feat}_${var}"
+        if [[ ! -x "$BIN" ]]; then
+            echo -e "  ${RED}Missing:${NC} $BIN"
+            MISSING=1
+        fi
+        BIN_COUNT=$((BIN_COUNT + 1))
+    done
 done
 if [[ "$MISSING" -eq 1 ]]; then
     echo -e "${RED}Build failed: some binaries are missing.${NC}"
@@ -92,20 +117,23 @@ fi
 # --- Stage bundle ---
 echo -e "${CYAN}[3/4] Staging bundle...${NC}"
 rm -rf "$BUNDLE"
-mkdir -p "$BUNDLE/bin" "$BUNDLE/bench/data"
+mkdir -p "$BUNDLE/bin"
 
 for feat in "${FEATURES[@]}"; do
-    SRC="${BUILD_DIR}/features/${feat}/bench_${feat}"
-    cp "$SRC" "$BUNDLE/bin/"
-    if [[ "$STRIP_BINS" -eq 1 ]]; then
-        $STRIP_CMD "$BUNDLE/bin/bench_${feat}"
-    fi
+    for var in ${FEATURE_VARIANTS[$feat]}; do
+        SRC="${BUILD_DIR}/features/${feat}/bench_${feat}_${var}"
+        cp "$SRC" "$BUNDLE/bin/"
+        if [[ "$STRIP_BINS" -eq 1 ]]; then
+            $STRIP_CMD "$BUNDLE/bin/bench_${feat}_${var}"
+        fi
+    done
 done
 
 # Verify one is truly static
-SAMPLE=$(file "$BUNDLE/bin/bench_add")
+SAMPLE_BIN=$(ls "$BUNDLE/bin/"bench_* | head -1)
+SAMPLE=$(file "$SAMPLE_BIN")
 if [[ "$SAMPLE" != *"statically linked"* ]]; then
-    echo -e "${RED}Warning: bench_add is not statically linked!${NC}"
+    echo -e "${RED}Warning: $(basename "$SAMPLE_BIN") is not statically linked!${NC}"
     echo "  $SAMPLE"
     if [[ "$TARGET_ARCH" == "aarch64" ]]; then
         echo "  You may need libc6-dev-arm64-cross installed."
@@ -128,7 +156,7 @@ cat > "$BUNDLE/run.sh" << 'RUNNER_EOF'
 #   --cpu CORE          Pin to this CPU core (default: last physical core)
 #   --levels LEVELS     Comma-separated SIMD levels to test
 #                       (auto-detected from architecture if not specified)
-#   --features FEATURES Comma-separated feature names (default: all)
+#   --features FEATURES Comma-separated variant names (default: all)
 
 set -euo pipefail
 
@@ -142,6 +170,27 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+
+# Feature -> variants mapping
+declare -A FEATURE_VARIANTS
+FEATURE_VARIANTS[add]="f32"
+FEATURE_VARIANTS[concentration]="f64"
+FEATURE_VARIANTS[entropy]="u16"
+FEATURE_VARIANTS[gini]="f64"
+FEATURE_VARIANTS[hhi]="u16"
+FEATURE_VARIANTS[hill]="f64"
+FEATURE_VARIANTS[histogram]="u16"
+FEATURE_VARIANTS[kurtosis]="f64"
+FEATURE_VARIANTS[max]="f64 u32"
+FEATURE_VARIANTS[mean]="f64"
+FEATURE_VARIANTS[min]="f64"
+FEATURE_VARIANTS[mul]="f32"
+FEATURE_VARIANTS[simpson]="u16"
+FEATURE_VARIANTS[skewness]="f64"
+FEATURE_VARIANTS[sub]="f32"
+FEATURE_VARIANTS[sum]="f64"
+FEATURE_VARIANTS[topk]="f64"
+FEATURE_VARIANTS[variance]="f64"
 
 ALL_FEATURES=(add concentration entropy gini hhi hill histogram kurtosis
               max mean min mul simpson skewness sub sum topk variance)
@@ -163,16 +212,16 @@ while [[ $# -gt 0 ]]; do
             echo "  --levels LEVELS     Comma-separated SIMD levels:"
             echo "                        x86: scalar,sse2,sse4.2,avx,avx2,avx512f"
             echo "                        ARM: scalar,neon,sve,sve2"
-            echo "  --features FEATURES Comma-separated features (default: all)"
+            echo "  --features FEATURES Comma-separated variant names (default: all)"
             exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
 
 # Auto-detect default SIMD levels based on architecture
+HOST_ARCH=$(uname -m)
 if [[ -z "$SIMD_LEVELS_STR" ]]; then
-    ARCH=$(uname -m)
-    case "$ARCH" in
+    case "$HOST_ARCH" in
         x86_64|i686)  SIMD_LEVELS_STR="scalar,sse2,sse4.2,avx,avx2,avx512f" ;;
         aarch64|arm*) SIMD_LEVELS_STR="scalar,neon,sve,sve2" ;;
         *)            SIMD_LEVELS_STR="scalar" ;;
@@ -181,10 +230,16 @@ fi
 
 IFS=',' read -ra SIMD_LEVELS <<< "$SIMD_LEVELS_STR"
 
+# Build variant list
+ALL_VARIANTS=()
 if [[ -n "$FEATURES_STR" ]]; then
-    IFS=',' read -ra FEATURES <<< "$FEATURES_STR"
+    IFS=',' read -ra ALL_VARIANTS <<< "$FEATURES_STR"
 else
-    FEATURES=("${ALL_FEATURES[@]}")
+    for feat in "${ALL_FEATURES[@]}"; do
+        for var in ${FEATURE_VARIANTS[$feat]}; do
+            ALL_VARIANTS+=("${feat}_${var}")
+        done
+    done
 fi
 
 if [[ -z "$PIN_CPU" ]]; then
@@ -207,28 +262,26 @@ echo ""
 echo -e "  CPU:          ${GREEN}${CPU_NAME}${NC}"
 echo -e "  Pinned core:  ${GREEN}${PIN_CPU}${NC}"
 echo -e "  Priority:     ${GREEN}nice -n -20${NC}"
-echo -e "  Features:     ${GREEN}${#FEATURES[@]}${NC}"
+echo -e "  Variants:     ${GREEN}${#ALL_VARIANTS[@]}${NC}"
 echo -e "  SIMD levels:  ${GREEN}${SIMD_LEVELS[*]}${NC}"
-echo -e "  Total runs:   ${GREEN}$(( ${#FEATURES[@]} * ${#SIMD_LEVELS[@]} ))${NC}"
-echo -e "  Output:       ${YELLOW}bench/data/${NC}"
+echo -e "  Total runs:   ${GREEN}$(( ${#ALL_VARIANTS[@]} * ${#SIMD_LEVELS[@]} ))${NC}"
+echo -e "  Output:       ${YELLOW}bench/cpus/${HOST_ARCH}/...${NC}"
 echo ""
 
 # Verify binaries exist
-for feat in "${FEATURES[@]}"; do
-    if [[ ! -x "bin/bench_${feat}" ]]; then
-        echo -e "${RED}Missing binary: bin/bench_${feat}${NC}"
+for variant in "${ALL_VARIANTS[@]}"; do
+    if [[ ! -x "bin/bench_${variant}" ]]; then
+        echo -e "${RED}Missing binary: bin/bench_${variant}${NC}"
         exit 1
     fi
 done
 
-mkdir -p bench/data
-
 TOTAL_START=$(date +%s)
 RUN=0
-TOTAL_RUNS=$(( ${#FEATURES[@]} * ${#SIMD_LEVELS[@]} ))
+TOTAL_RUNS=$(( ${#ALL_VARIANTS[@]} * ${#SIMD_LEVELS[@]} ))
 
-for feat in "${FEATURES[@]}"; do
-    echo -e "${BOLD}${BLUE}[$feat]${NC}"
+for variant in "${ALL_VARIANTS[@]}"; do
+    echo -e "${BOLD}${BLUE}[${variant}]${NC}"
 
     for lvl in "${SIMD_LEVELS[@]}"; do
         RUN=$((RUN + 1))
@@ -236,14 +289,14 @@ for feat in "${FEATURES[@]}"; do
 
         START=$(date +%s%N)
         taskset -c "$PIN_CPU" nice -n -20 \
-            ./bin/bench_${feat} --auto-detect --force-level "$lvl" 2>/dev/null
+            ./bin/bench_${variant} --auto-detect --force-level "$lvl" 2>/dev/null
         END=$(date +%s%N)
 
         ELAPSED_MS=$(( (END - START) / 1000000 ))
 
         LVL_PAT="${lvl//./_}"
         LVL_PAT="${LVL_PAT/avx512f/avx_512f}"
-        CSV=$(ls -t "bench/data/${feat}_"*"_${LVL_PAT}"*.csv 2>/dev/null | head -1 || true)
+        CSV=$(ls -t bench/cpus/*/*/data/"${variant}_${LVL_PAT}"*.csv 2>/dev/null | head -1 || true)
         if [[ -n "$CSV" && -f "$CSV" ]]; then
             LAST=$(tail -1 "$CSV")
             GFLOPS=$(echo "$LAST" | cut -d, -f8)
@@ -259,15 +312,15 @@ done
 TOTAL_END=$(date +%s)
 echo -e "${GREEN}All benchmarks finished in $((TOTAL_END - TOTAL_START)) seconds.${NC}"
 echo ""
-echo -e "Results in ${YELLOW}bench/data/*.csv${NC}"
+echo -e "Results in ${YELLOW}bench/cpus/${HOST_ARCH}/*/data/*.csv${NC}"
 echo ""
 echo "Next steps:"
-echo "  1. Copy bench/data/*.csv back to your build machine's bench/data/"
+echo "  1. Copy the bench/cpus/ tree back to your build machine"
 echo "  2. Run:  bash scripts/run_all_benchmarks.sh --charts-only"
 echo ""
 RUNNER_EOF
 chmod +x "$BUNDLE/run.sh"
-echo -e "  ${GREEN}done${NC}  (${#FEATURES[@]} binaries + run.sh)"
+echo -e "  ${GREEN}done${NC}  (${BIN_COUNT} binaries + run.sh)"
 
 # --- Create tarball ---
 echo -e "${CYAN}[4/4] Packaging...${NC}"
@@ -285,6 +338,6 @@ echo "  scp ${TARBALL} server:"
 echo "  ssh server 'tar xzf ${TARBALL} && cd ${BUNDLE} && sudo ./run.sh --cpu 0'"
 echo ""
 echo "Then copy results back:"
-echo "  scp 'server:${BUNDLE}/bench/data/*.csv' bench/data/"
+echo "  scp -r 'server:${BUNDLE}/bench/cpus' bench/"
 echo "  bash scripts/run_all_benchmarks.sh --charts-only"
 echo ""

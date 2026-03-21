@@ -1,5 +1,10 @@
 /* SPDX-License-Identifier: BSL-1.0 */
+#if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
+#elif defined(__aarch64__)
+#include <arm_neon.h>
+#include <arm_sve.h>
+#endif
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -7,7 +12,9 @@
 #include <dynemit/hhi.h>
 #include <dynemit/compiler.h>
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
+#endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
 hhi_u16_scalar(const uint16_t *data, size_t n)
@@ -29,6 +36,8 @@ hhi_u16_scalar(const uint16_t *data, size_t n)
     return sum_sq;
 }
 
+
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("sse2")))
 static double
 hhi_u16_sse2(const uint16_t *data, size_t n)
@@ -118,16 +127,48 @@ hhi_u16_avx512f(const uint16_t *data, size_t n)
     double sum_sq = _mm512_reduce_add_pd(vsum);
     return sum_sq;
 }
+#endif
+
+#if defined(__aarch64__)
+
+static double
+hhi_u16_neon(const uint16_t *data, size_t n)
+{
+    return hhi_u16_scalar(data, n);
+}
+
+__attribute__((target("+sve")))
+static double
+hhi_u16_sve(const uint16_t *data, size_t n)
+{
+    return hhi_u16_scalar(data, n);
+}
+
+__attribute__((target("+sve2")))
+static double
+hhi_u16_sve2(const uint16_t *data, size_t n)
+{
+    return hhi_u16_scalar(data, n);
+}
+
+#endif /* aarch64 */
 
 hhi_u16_fn_t
 hhi_u16_select(simd_level_t level)
 {
     switch (level) {
+#if defined(__x86_64__) || defined(__i386__)
     case SIMD_AVX512F: return hhi_u16_avx512f;
     case SIMD_AVX2:    return hhi_u16_avx2;
     case SIMD_AVX:     return hhi_u16_avx;
     case SIMD_SSE4_2:  return hhi_u16_sse42;
     case SIMD_SSE2:    return hhi_u16_sse2;
+#endif
+#if defined(__aarch64__)
+    case SIMD_SVE2:    return hhi_u16_sve2;
+    case SIMD_SVE:     return hhi_u16_sve;
+    case SIMD_NEON:    return hhi_u16_neon;
+#endif
     case SIMD_SCALAR:
     default:           return hhi_u16_scalar;
     }
@@ -139,6 +180,10 @@ hhi_u16_resolver(void)
     return hhi_u16_select(detect_simd_level());
 }
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
+#elif defined(__aarch64__)
+__attribute__((target("+sve2,+sve")))
+#endif
 double hhi_u16(const uint16_t *data, size_t n)
     __attribute__((ifunc("hhi_u16_resolver")));

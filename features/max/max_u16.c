@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
+#elif defined(__aarch64__)
+#include <arm_neon.h>
+#include <arm_sve.h>
 #endif
 #include <stddef.h>
 #include <stdint.h>
@@ -86,6 +89,64 @@ max_u16_avx512f(const uint16_t *data, size_t n)
 
 #endif /* x86 */
 
+#if defined(__aarch64__)
+
+static double
+max_u16_neon(const uint16_t *data, size_t n)
+{
+    if (n == 0) return 0.0;
+    size_t i = 0;
+    uint16x8_t vmax = vdupq_n_u16(0);
+    for (; i + 8 <= n; i += 8)
+        vmax = vmaxq_u16(vmax, vld1q_u16(data + i));
+    uint16_t result = vmaxvq_u16(vmax);
+    for (; i < n; i++)
+        if (data[i] > result) result = data[i];
+    return (double)result;
+}
+
+__attribute__((target("+sve")))
+static double
+max_u16_sve(const uint16_t *data, size_t n)
+{
+    if (n == 0) return 0.0;
+    uint64_t i = 0;
+    svuint16_t vmax = svdup_u16(0);
+    svbool_t pg = svwhilelt_b16(i, (uint64_t)n);
+    do {
+        vmax = svmax_u16_m(pg, vmax, svld1_u16(pg, data + i));
+        i += svcnth();
+        pg = svwhilelt_b16(i, (uint64_t)n);
+    } while (svptest_any(svptrue_b16(), pg));
+    return (double)svmaxv_u16(svptrue_b16(), vmax);
+}
+
+__attribute__((target("+sve2")))
+static double
+max_u16_sve2(const uint16_t *data, size_t n)
+{
+    if (n == 0) return 0.0;
+    uint64_t i = 0;
+    uint64_t vl = svcnth();
+    svbool_t ptrue = svptrue_b16();
+    svuint16_t vmax0 = svdup_u16(0);
+    svuint16_t vmax1 = svdup_u16(0);
+    for (; i + 2 * vl <= n; i += 2 * vl) {
+        vmax0 = svmax_u16_x(ptrue, vmax0, svld1_u16(ptrue, data + i));
+        vmax1 = svmax_u16_x(ptrue, vmax1, svld1_u16(ptrue, data + i + vl));
+    }
+    svuint16_t vmax = svmaxp_u16_x(ptrue, vmax0, vmax1);
+    svbool_t pg = svwhilelt_b16(i, (uint64_t)n);
+    while (svptest_any(ptrue, pg)) {
+        vmax = svmax_u16_m(pg, vmax, svld1_u16(pg, data + i));
+        i += vl;
+        pg = svwhilelt_b16(i, (uint64_t)n);
+    }
+    return (double)svmaxv_u16(ptrue, vmax);
+}
+
+#endif /* aarch64 */
+
 max_u16_fn_t
 max_u16_select(simd_level_t level)
 {
@@ -96,6 +157,11 @@ max_u16_select(simd_level_t level)
     case SIMD_AVX:     return max_u16_avx;
     case SIMD_SSE4_2:  return max_u16_sse42;
     case SIMD_SSE2:    return max_u16_sse2;
+#endif
+#if defined(__aarch64__)
+    case SIMD_SVE2:    return max_u16_sve2;
+    case SIMD_SVE:     return max_u16_sve;
+    case SIMD_NEON:    return max_u16_neon;
 #endif
     case SIMD_SCALAR:
     default:           return max_u16_scalar;
@@ -110,6 +176,8 @@ max_u16_resolver(void)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
+#elif defined(__aarch64__)
+__attribute__((target("+sve2,+sve")))
 #endif
 double max_u16(const uint16_t *data, size_t n)
     __attribute__((ifunc("max_u16_resolver")));

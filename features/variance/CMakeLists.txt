@@ -23,6 +23,6 @@ target_link_libraries(test_variance PRIVATE dynemit_variance dynemit_mean dynemi
 add_test(NAME test_variance COMMAND test_variance)
 
 # Benchmarks
-add_executable(bench_variance benchmarks/bench_variance.c)
-target_include_directories(bench_variance PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_variance PRIVATE dynemit_variance dynemit_mean dynemit_core m)
+add_executable(bench_variance_f64 benchmarks/bench_variance_f64.c)
+target_include_directories(bench_variance_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_variance_f64 PRIVATE dynemit_variance dynemit_mean dynemit_core m)

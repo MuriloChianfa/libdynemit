@@ -23,6 +23,6 @@ target_link_libraries(test_kurtosis PRIVATE dynemit_kurtosis dynemit_mean dynemi
 add_test(NAME test_kurtosis COMMAND test_kurtosis)
 
 # Benchmarks
-add_executable(bench_kurtosis benchmarks/bench_kurtosis.c)
-target_include_directories(bench_kurtosis PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_kurtosis PRIVATE dynemit_kurtosis dynemit_mean dynemit_core m)
+add_executable(bench_kurtosis_f64 benchmarks/bench_kurtosis_f64.c)
+target_include_directories(bench_kurtosis_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_kurtosis_f64 PRIVATE dynemit_kurtosis dynemit_mean dynemit_core m)

@@ -1,5 +1,10 @@
 /* SPDX-License-Identifier: BSL-1.0 */
+#if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
+#elif defined(__aarch64__)
+#include <arm_neon.h>
+#include <arm_sve.h>
+#endif
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -18,7 +23,9 @@
  * we iterate boundaries per element.
  */
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
+#endif
 DYNEMIT_NO_AUTOVECTORIZE
 static void
 histogram_u16_scalar(const uint16_t *data, size_t n,
@@ -40,6 +47,8 @@ histogram_u16_scalar(const uint16_t *data, size_t n,
     }
 }
 
+
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("sse2")))
 static void
 histogram_u16_sse2(const uint16_t *data, size_t n,
@@ -147,16 +156,54 @@ histogram_u16_avx512f(const uint16_t *data, size_t n,
     /* AVX512F does not have 16-bit comparison; delegate to AVX2 path */
     histogram_u16_avx2(data, n, boundaries, num_boundaries, out);
 }
+#endif
+
+#if defined(__aarch64__)
+
+static void
+histogram_u16_neon(const uint16_t *data, size_t n,
+                         const uint16_t *boundaries, size_t num_boundaries,
+                         uint64_t *out)
+{
+    histogram_u16_scalar(data, n, boundaries, num_boundaries, out);
+}
+
+__attribute__((target("+sve")))
+static void
+histogram_u16_sve(const uint16_t *data, size_t n,
+                        const uint16_t *boundaries, size_t num_boundaries,
+                        uint64_t *out)
+{
+    histogram_u16_scalar(data, n, boundaries, num_boundaries, out);
+}
+
+__attribute__((target("+sve2")))
+static void
+histogram_u16_sve2(const uint16_t *data, size_t n,
+                         const uint16_t *boundaries, size_t num_boundaries,
+                         uint64_t *out)
+{
+    histogram_u16_scalar(data, n, boundaries, num_boundaries, out);
+}
+
+#endif /* aarch64 */
 
 histogram_u16_fn_t
 histogram_u16_select(simd_level_t level)
 {
     switch (level) {
+#if defined(__x86_64__) || defined(__i386__)
     case SIMD_AVX512F: return histogram_u16_avx512f;
     case SIMD_AVX2:    return histogram_u16_avx2;
     case SIMD_AVX:     return histogram_u16_avx;
     case SIMD_SSE4_2:  return histogram_u16_sse42;
     case SIMD_SSE2:    return histogram_u16_sse2;
+#endif
+#if defined(__aarch64__)
+    case SIMD_SVE2:    return histogram_u16_sve2;
+    case SIMD_SVE:     return histogram_u16_sve;
+    case SIMD_NEON:    return histogram_u16_neon;
+#endif
     case SIMD_SCALAR:
     default:           return histogram_u16_scalar;
     }
@@ -168,7 +215,11 @@ histogram_u16_resolver(void)
     return histogram_u16_select(detect_simd_level());
 }
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
+#elif defined(__aarch64__)
+__attribute__((target("+sve2,+sve")))
+#endif
 void histogram_u16(const uint16_t *data, size_t n,
                          const uint16_t *boundaries, size_t num_boundaries,
                          uint64_t *out)

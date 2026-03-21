@@ -17,7 +17,46 @@
 #include <strings.h>
 #include <ctype.h>
 #include <math.h>
+#include <sys/stat.h>
+#include <errno.h>
 #include <dynemit/core.h>
+
+/* ---- Architecture string ---- */
+
+static inline const char *
+bench_get_arch(void)
+{
+#if defined(__x86_64__) || defined(__i386__)
+    return "x86_64";
+#elif defined(__aarch64__)
+    return "aarch64";
+#else
+    return "unknown";
+#endif
+}
+
+/* ---- Recursive directory creation ---- */
+
+static int
+bench_mkdir_p(const char *path)
+{
+    char tmp[512];
+    size_t len = strlen(path);
+    if (len >= sizeof(tmp)) return -1;
+    memcpy(tmp, path, len + 1);
+
+    for (size_t i = 1; i < len; i++) {
+        if (tmp[i] == '/') {
+            tmp[i] = '\0';
+            if (mkdir(tmp, 0755) != 0 && errno != EEXIST)
+                return -1;
+            tmp[i] = '/';
+        }
+    }
+    if (mkdir(tmp, 0755) != 0 && errno != EEXIST)
+        return -1;
+    return 0;
+}
 
 /* ---- Timing ---- */
 
@@ -136,6 +175,10 @@ bench_iters_for_size(size_t n)
     if (n < 5000000) return 1000;
     return 500;
 }
+
+/* ---- Trials per data point ---- */
+
+#define BENCH_TRIALS 3
 
 /* ---- Standard array sizes ---- */
 
@@ -378,6 +421,7 @@ static char  bench_auto_filename[512];
 static int
 bench_auto_detect_open(const char *feature, simd_level_t lvl)
 {
+    const char *arch = bench_get_arch();
     char cpu[256];
     bench_get_cpu_model(cpu, sizeof(cpu));
     if (strlen(cpu) > 80) cpu[80] = '\0';
@@ -392,8 +436,15 @@ bench_auto_detect_open(const char *feature, simd_level_t lvl)
     }
     sl[j] = '\0';
 
+    char dir[512];
+    snprintf(dir, sizeof(dir), "bench/cpus/%s/%s/data", arch, cpu);
+    if (bench_mkdir_p(dir) != 0) {
+        fprintf(stderr, "Error: cannot create directory '%s'\n", dir);
+        return -1;
+    }
+
     snprintf(bench_auto_filename, sizeof(bench_auto_filename),
-             "bench/data/%s_%s_%s.csv", feature, cpu, sl);
+             "%s/%s_%s.csv", dir, feature, sl);
 
     bench_saved_stdout = stdout;
     stdout = fopen(bench_auto_filename, "w");

@@ -23,6 +23,6 @@ target_link_libraries(test_concentration PRIVATE dynemit_concentration dynemit_t
 add_test(NAME test_concentration COMMAND test_concentration)
 
 # Benchmarks
-add_executable(bench_concentration benchmarks/bench_concentration.c)
-target_include_directories(bench_concentration PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_concentration PRIVATE dynemit_concentration dynemit_topk dynemit_hill dynemit_hhi dynemit_core m)
+add_executable(bench_concentration_f64 benchmarks/bench_concentration_f64.c)
+target_include_directories(bench_concentration_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_concentration_f64 PRIVATE dynemit_concentration dynemit_topk dynemit_hill dynemit_hhi dynemit_core m)

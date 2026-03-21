@@ -22,6 +22,6 @@ target_link_libraries(test_histogram PRIVATE dynemit_histogram dynemit_core unit
 add_test(NAME test_histogram COMMAND test_histogram)
 
 # Benchmarks
-add_executable(bench_histogram benchmarks/bench_histogram.c)
-target_include_directories(bench_histogram PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_histogram PRIVATE dynemit_histogram dynemit_core m)
+add_executable(bench_histogram_u16 benchmarks/bench_histogram_u16.c)
+target_include_directories(bench_histogram_u16 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_histogram_u16 PRIVATE dynemit_histogram dynemit_core m)

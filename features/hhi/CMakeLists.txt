@@ -46,6 +46,6 @@ target_link_libraries(test_hhi PRIVATE dynemit_hhi dynemit_core unity m)
 add_test(NAME test_hhi COMMAND test_hhi)
 
 # Benchmarks
-add_executable(bench_hhi benchmarks/bench_hhi.c)
-target_include_directories(bench_hhi PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_hhi PRIVATE dynemit_hhi dynemit_core m)
+add_executable(bench_hhi_u16 benchmarks/bench_hhi_u16.c)
+target_include_directories(bench_hhi_u16 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_hhi_u16 PRIVATE dynemit_hhi dynemit_core m)

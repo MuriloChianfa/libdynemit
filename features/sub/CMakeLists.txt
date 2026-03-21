@@ -23,6 +23,6 @@ target_link_libraries(test_sub PRIVATE dynemit_sub dynemit_core unity m)
 add_test(NAME test_sub COMMAND test_sub)
 
 # Benchmarks
-add_executable(bench_sub benchmarks/bench_sub.c)
-target_include_directories(bench_sub PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_sub PRIVATE dynemit_sub dynemit_core m)
+add_executable(bench_sub_f32 benchmarks/bench_sub_f32.c)
+target_include_directories(bench_sub_f32 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_sub_f32 PRIVATE dynemit_sub dynemit_core m)

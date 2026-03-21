@@ -46,6 +46,6 @@ target_link_libraries(test_simpson PRIVATE dynemit_simpson dynemit_core unity m)
 add_test(NAME test_simpson COMMAND test_simpson)
 
 # Benchmarks
-add_executable(bench_simpson benchmarks/bench_simpson.c)
-target_include_directories(bench_simpson PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_simpson PRIVATE dynemit_simpson dynemit_core m)
+add_executable(bench_simpson_u16 benchmarks/bench_simpson_u16.c)
+target_include_directories(bench_simpson_u16 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_simpson_u16 PRIVATE dynemit_simpson dynemit_core m)

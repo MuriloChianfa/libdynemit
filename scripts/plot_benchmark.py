@@ -7,7 +7,7 @@ comparing performance across different SIMD levels and array sizes.
 
 Usage:
     python plot_benchmark.py --input results1.csv:Label1 results2.csv:Label2 \\
-                             --output docs/img/benchmark.png \\
+                             --output bench/features/max_f64/timing.png \\
                              --title "Performance Comparison"
 """
 
@@ -203,7 +203,7 @@ def plot_benchmark(datasets: Dict[str, Tuple], output_path: str, title: str,
     ax.set_xlim(left=0, right=max([max(data[0]) for data in datasets.values()]) * 1.05)
     
     # Add note about trials below x-axis
-    ax.text(0.5, -0.1, '10 trials per data point, same build, GCC 15.2', 
+    ax.text(0.5, -0.1, '3 trials per data point, same build', 
             transform=ax.transAxes, 
             ha='center', 
             fontsize=9, 
@@ -319,22 +319,19 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Auto-infer labels from filenames (recommended)
-  python plot_benchmark.py bench/data/results_*.csv
-  
   # Single dataset with custom label
   python plot_benchmark.py --input results.csv:AVX2
   
-  # Multiple datasets with auto-inferred labels
-  python plot_benchmark.py bench/data/results_amd_*.csv bench/data/results_intel_*.csv
+  # Multiple datasets with explicit labels
+  python plot_benchmark.py --input file1.csv:Label1 file2.csv:Label2
   
   # Custom output and title
-  python plot_benchmark.py bench/data/*.csv \\
+  python plot_benchmark.py --input file1.csv:Label1 \\
     --output my_chart.png \\
     --title "My Custom Title"
   
   # Plot GFLOP/s instead of time
-  python plot_benchmark.py bench/data/*.csv --metric gflops
+  python plot_benchmark.py --input file1.csv:Label1 --metric gflops
         """
     )
     
@@ -354,8 +351,8 @@ Examples:
     
     parser.add_argument(
         '--output', '-o',
-        default='docs/img/benchmark_vector_mul.png',
-        help='Output image path (default: docs/img/benchmark_vector_mul.png)'
+        default='bench/features/output.png',
+        help='Output image path (default: bench/features/output.png)'
     )
     
     parser.add_argument(

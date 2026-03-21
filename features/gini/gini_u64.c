@@ -1,5 +1,10 @@
 /* SPDX-License-Identifier: BSL-1.0 */
+#if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
+#elif defined(__aarch64__)
+#include <arm_neon.h>
+#include <arm_sve.h>
+#endif
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -15,7 +20,9 @@
  * Result clamped to [0, 1].
  */
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
+#endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
 gini_u64_scalar(const uint64_t *sorted_data, size_t n)
@@ -36,6 +43,8 @@ gini_u64_scalar(const uint64_t *sorted_data, size_t n)
     return g;
 }
 
+
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("sse2")))
 static double
 gini_u64_sse2(const uint64_t *sorted_data, size_t n)
@@ -141,16 +150,48 @@ gini_u64_avx512f(const uint64_t *sorted_data, size_t n)
     if (g > 1.0) g = 1.0;
     return g;
 }
+#endif
+
+#if defined(__aarch64__)
+
+static double
+gini_u64_neon(const uint64_t *sorted_data, size_t n)
+{
+    return gini_u64_scalar(sorted_data, n);
+}
+
+__attribute__((target("+sve")))
+static double
+gini_u64_sve(const uint64_t *sorted_data, size_t n)
+{
+    return gini_u64_scalar(sorted_data, n);
+}
+
+__attribute__((target("+sve2")))
+static double
+gini_u64_sve2(const uint64_t *sorted_data, size_t n)
+{
+    return gini_u64_scalar(sorted_data, n);
+}
+
+#endif /* aarch64 */
 
 gini_u64_fn_t
 gini_u64_select(simd_level_t level)
 {
     switch (level) {
+#if defined(__x86_64__) || defined(__i386__)
     case SIMD_AVX512F: return gini_u64_avx512f;
     case SIMD_AVX2:    return gini_u64_avx2;
     case SIMD_AVX:     return gini_u64_avx;
     case SIMD_SSE4_2:  return gini_u64_sse42;
     case SIMD_SSE2:    return gini_u64_sse2;
+#endif
+#if defined(__aarch64__)
+    case SIMD_SVE2:    return gini_u64_sve2;
+    case SIMD_SVE:     return gini_u64_sve;
+    case SIMD_NEON:    return gini_u64_neon;
+#endif
     case SIMD_SCALAR:
     default:           return gini_u64_scalar;
     }
@@ -162,6 +203,10 @@ gini_u64_resolver(void)
     return gini_u64_select(detect_simd_level());
 }
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
+#elif defined(__aarch64__)
+__attribute__((target("+sve2,+sve")))
+#endif
 double gini_u64(const uint64_t *sorted_data, size_t n)
     __attribute__((ifunc("gini_u64_resolver")));

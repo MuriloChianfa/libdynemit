@@ -23,9 +23,9 @@ target_link_libraries(test_max PRIVATE dynemit_max dynemit_core unity m)
 add_test(NAME test_max COMMAND test_max)
 
 # Benchmarks
-add_executable(bench_max benchmarks/bench_max.c)
-target_include_directories(bench_max PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_max PRIVATE dynemit_max dynemit_core m)
+add_executable(bench_max_f64 benchmarks/bench_max_f64.c)
+target_include_directories(bench_max_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_max_f64 PRIVATE dynemit_max dynemit_core m)
 
 add_executable(bench_max_u32 benchmarks/bench_max_u32.c)
 target_include_directories(bench_max_u32 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)

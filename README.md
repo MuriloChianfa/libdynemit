@@ -27,13 +27,12 @@ entropy_u32(data, n);
 
 ## Same build, best performance
 
-![Vector Multiply Benchmark](docs/img/benchmark_vector_mul.png)
-*Benchmark comparing vector multiplication performance across different CPU architectures using the same build binary. The library automatically detected and utilized each CPU's highest supported SIMD instruction set (AVX-512F, AVX2, AVX or SSE4.2) at runtime. Lower execution time indicates better performance. Each data point represents the median of 10 trials, with error bars showing ±1 standard deviation.*
+Benchmark charts are generated per-feature and per-CPU under `bench/`. After running benchmarks, you will find:
 
-## Forced SIMD instructions without dynamic dispatch
+- **CPU comparison** charts at `bench/features/{variant}/timing.png` and `throughput.png`
+- **SIMD comparison** charts at `bench/cpus/{arch}/{cpu}/features/{variant}/timing.png` and `throughput.png`
 
-![SIMD Feature Comparison](docs/img/benchmark_vector_mul_feature_compare.png)
-*Performance scaling comparison of different SIMD instruction sets on the same CPU (AMD Ryzen 9 9950X3D). This benchmark demonstrates the progressive performance improvements from Scalar → SSE2 → SSE4.2 → AVX → AVX2 → AVX-512F. Each implementation was built and tested separately to isolate the impact of each SIMD level. The chart shows ~1.8x speedup from AVX-512F compared to scalar code for large arrays. Lower execution time indicates better performance. Each data point represents the median of 10 trials, with error bars showing ±1 standard deviation.*
+Run `sudo ./scripts/run_all_benchmarks.sh` to generate all data and charts. See [docs/BENCHMARKING.md](docs/BENCHMARKING.md) for details.
 
 ## Installation
 
@@ -593,7 +592,12 @@ libdynemit/
 │   └── *
 ├── bench/
 │   ├── bench_utils.h           # Shared benchmark infrastructure (header-only)
-│   └── data/                   # Benchmark results (CSV files)
+│   ├── cpus/                   # Per-CPU benchmark data and charts
+│   │   └── {arch}/{cpu}/       # e.g. x86_64/amd_ryzen_9_9950x3d/
+│   │       ├── data/           # CSV results ({variant}_{simd}.csv)
+│   │       └── features/       # Per-variant charts (timing.png, throughput.png)
+│   └── features/               # Cross-CPU comparison charts per variant
+│       └── {variant}/          # e.g. max_u32/timing.png
 ├── tests/                      # Core-only tests (SIMD detection, C++ compat)
 │   ├── CMakeLists.txt
 │   ├── test_*
@@ -602,8 +606,7 @@ libdynemit/
 │   ├── ARCHITECTURE.md         # Internal architecture documentation
 │   ├── DEVELOPMENT.md          # Development setup guide
 │   ├── BENCHMARKING.md         # Benchmarking and visualization guide
-│   ├── IFUNC_RESOLVERS.md      # IFUNC resolver safety documentation
-│   └── img/                    # Generated benchmark charts
+│   └── IFUNC_RESOLVERS.md      # IFUNC resolver safety documentation
 ├── scripts/
 │   ├── check_for_simd.sh       # Verify SIMD instructions in binary
 │   ├── plot_benchmark.py       # Generate benchmark visualization charts
@@ -686,16 +689,16 @@ The `mull.yml` config at the project root controls which mutators are active.
 <details>
 <summary><b>Running Benchmarks</b></summary>
 
-Each feature has its own benchmark under `features/<name>/benchmarks/`. Benchmarks measure single-core performance across multiple array sizes and all SIMD levels using the shared infrastructure in `bench/bench_utils.h`.
+Each feature variant has its own benchmark binary under `features/<name>/benchmarks/`. Benchmark binaries use explicit type suffixes (e.g. `bench_max_f64`, `bench_max_u32`). Benchmarks measure single-core performance across multiple array sizes and all SIMD levels using the shared infrastructure in `bench/bench_utils.h`.
 
 ```bash
-# Run all features x all SIMD levels, pinned to one core, max nice priority
+# Run all variants x all SIMD levels, pinned to one core, max nice priority
 sudo ./scripts/run_all_benchmarks.sh --cpu 15
 
-# Or run a single feature benchmark directly
-./build/features/add/bench_add
-./build/features/add/bench_add --auto-detect
-# Creates: bench/data/add_<cpu_model>_<simd_level>.csv
+# Or run a single variant benchmark directly
+./build/features/add/bench_add_f32
+./build/features/add/bench_add_f32 --auto-detect
+# Creates: bench/cpus/x86_64/<cpu_model>/data/add_f32_<simd_level>.csv
 ```
 
 **Regenerate charts from existing CSV data:**
@@ -709,7 +712,7 @@ bash ./scripts/run_all_benchmarks.sh --charts-only
 # Produces: dynemit-bench-x86_64.tar.gz (static binaries)
 ```
 
-For detailed benchmarking instructions, chart naming conventions, and remote server workflow, see [docs/BENCHMARKING.md](docs/BENCHMARKING.md).
+For detailed benchmarking instructions, chart layout, and remote server workflow, see [docs/BENCHMARKING.md](docs/BENCHMARKING.md).
 
 </details>
 

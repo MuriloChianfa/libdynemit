@@ -126,7 +126,7 @@ echo ""
 
 echo -e "${CYAN}[3/5] Uploading bundle to remote...${NC}"
 $SCP_CMD "$TARBALL" "${SSH_USER}@${SSH_HOST}:/tmp/" 2>/dev/null
-$SSH_CMD "cd /tmp && rm -rf ${BUNDLE} && tar xzf ${TARBALL} && mkdir -p ${BUNDLE}/bench/data" 2>/dev/null
+$SSH_CMD "cd /tmp && rm -rf ${BUNDLE} && tar xzf ${TARBALL}" 2>/dev/null
 echo -e "  ${GREEN}done${NC}"
 echo ""
 
@@ -142,19 +142,20 @@ $SSH_CMD "cd ${REMOTE_DIR} && sudo bash run.sh ${RUN_ARGS}" 2>/dev/null
 
 echo ""
 
-echo -e "${CYAN}[5/5] Downloading CSV results...${NC}"
-mkdir -p bench/data
+echo -e "${CYAN}[5/5] Downloading benchmark results...${NC}"
+mkdir -p bench/cpus
 
-REMOTE_CSVS=$($SSH_CMD "ls ${REMOTE_DIR}/bench/data/*.csv 2>/dev/null" 2>/dev/null || true)
-if [[ -z "$REMOTE_CSVS" ]]; then
+REMOTE_CPUS_DIR="${REMOTE_DIR}/bench/cpus"
+REMOTE_CHECK=$($SSH_CMD "ls -d ${REMOTE_CPUS_DIR}/*/*/data/*.csv 2>/dev/null | head -1" 2>/dev/null || true)
+if [[ -z "$REMOTE_CHECK" ]]; then
     echo -e "${RED}No CSV files found on remote.${NC}"
     exit 1
 fi
 
-$SCP_CMD "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/bench/data/*.csv" bench/data/ 2>/dev/null
+$SCP_CMD -r "${SSH_USER}@${SSH_HOST}:${REMOTE_CPUS_DIR}" bench/ 2>/dev/null
 
-CSV_COUNT=$(echo "$REMOTE_CSVS" | wc -l)
-echo -e "  ${GREEN}Downloaded ${CSV_COUNT} CSV files${NC} to bench/data/"
+CSV_COUNT=$($SSH_CMD "ls ${REMOTE_CPUS_DIR}/*/*/data/*.csv 2>/dev/null | wc -l" 2>/dev/null || echo "0")
+echo -e "  ${GREEN}Downloaded ${CSV_COUNT} CSV files${NC} to bench/cpus/"
 
 $SSH_CMD "rm -rf ${REMOTE_DIR} /tmp/${TARBALL}" 2>/dev/null || true
 

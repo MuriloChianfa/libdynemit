@@ -30,6 +30,6 @@ target_link_libraries(test_gini PRIVATE dynemit_gini dynemit_core unity m)
 add_test(NAME test_gini COMMAND test_gini)
 
 # Benchmarks
-add_executable(bench_gini benchmarks/bench_gini.c)
-target_include_directories(bench_gini PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_gini PRIVATE dynemit_gini dynemit_core m)
+add_executable(bench_gini_f64 benchmarks/bench_gini_f64.c)
+target_include_directories(bench_gini_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_gini_f64 PRIVATE dynemit_gini dynemit_core m)

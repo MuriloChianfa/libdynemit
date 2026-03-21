@@ -20,7 +20,7 @@ if [ -z "$BINARY" ] || [ ! -f "$BINARY" ]; then
     echo -e "${RED}Error: Binary '${BINARY:-<none>}' not found!${NC}"
     echo "Usage: $0 <path/to/binary> [function_filter]"
     echo "Examples:"
-    echo "  $0 build-arm/features/max/bench_max"
+    echo "  $0 build-arm/features/max/bench_max_f64"
     echo "  $0 build/features/max/test_max max_u32"
     exit 1
 fi
@@ -248,5 +248,5 @@ echo ""
 echo -e "${GREEN}✓${NC} Binary analysis complete!"
 echo ""
 echo -e "${CYAN}Tip: Run a benchmark to see which SIMD level is selected at runtime:${NC}"
-echo -e "  ${BLUE}./build/features/max/bench_max${NC}"
+echo -e "  ${BLUE}./build/features/max/bench_max_f64${NC}"
 echo ""

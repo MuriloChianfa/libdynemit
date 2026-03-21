@@ -23,6 +23,6 @@ target_link_libraries(test_entropy PRIVATE dynemit_entropy dynemit_core unity m)
 add_test(NAME test_entropy COMMAND test_entropy)
 
 # Benchmarks
-add_executable(bench_entropy benchmarks/bench_entropy.c)
-target_include_directories(bench_entropy PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_entropy PRIVATE dynemit_entropy dynemit_core m)
+add_executable(bench_entropy_u16 benchmarks/bench_entropy_u16.c)
+target_include_directories(bench_entropy_u16 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
+target_link_libraries(bench_entropy_u16 PRIVATE dynemit_entropy dynemit_core m)

@@ -1,5 +1,10 @@
 /* SPDX-License-Identifier: BSL-1.0 */
+#if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
+#elif defined(__aarch64__)
+#include <arm_neon.h>
+#include <arm_sve.h>
+#endif
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -7,7 +12,9 @@
 #include <dynemit/simpson.h>
 #include <dynemit/compiler.h>
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
+#endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
 simpson_histogram_scalar(const uint64_t *counts, size_t n)
@@ -27,6 +34,8 @@ simpson_histogram_scalar(const uint64_t *counts, size_t n)
     return 1.0 - sum_sq;
 }
 
+
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("sse2")))
 static double
 simpson_histogram_sse2(const uint64_t *counts, size_t n)
@@ -128,16 +137,48 @@ simpson_histogram_avx512f(const uint64_t *counts, size_t n)
     }
     return 1.0 - sum_sq;
 }
+#endif
+
+#if defined(__aarch64__)
+
+static double
+simpson_histogram_neon(const uint64_t *counts, size_t n)
+{
+    return simpson_histogram_scalar(counts, n);
+}
+
+__attribute__((target("+sve")))
+static double
+simpson_histogram_sve(const uint64_t *counts, size_t n)
+{
+    return simpson_histogram_scalar(counts, n);
+}
+
+__attribute__((target("+sve2")))
+static double
+simpson_histogram_sve2(const uint64_t *counts, size_t n)
+{
+    return simpson_histogram_scalar(counts, n);
+}
+
+#endif /* aarch64 */
 
 simpson_histogram_fn_t
 simpson_histogram_select(simd_level_t level)
 {
     switch (level) {
+#if defined(__x86_64__) || defined(__i386__)
     case SIMD_AVX512F: return simpson_histogram_avx512f;
     case SIMD_AVX2:    return simpson_histogram_avx2;
     case SIMD_AVX:     return simpson_histogram_avx;
     case SIMD_SSE4_2:  return simpson_histogram_sse42;
     case SIMD_SSE2:    return simpson_histogram_sse2;
+#endif
+#if defined(__aarch64__)
+    case SIMD_SVE2:    return simpson_histogram_sve2;
+    case SIMD_SVE:     return simpson_histogram_sve;
+    case SIMD_NEON:    return simpson_histogram_neon;
+#endif
     case SIMD_SCALAR:
     default:           return simpson_histogram_scalar;
     }
@@ -149,6 +190,10 @@ simpson_histogram_resolver(void)
     return simpson_histogram_select(detect_simd_level());
 }
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
+#elif defined(__aarch64__)
+__attribute__((target("+sve2,+sve")))
+#endif
 double simpson_histogram(const uint64_t *counts, size_t n)
     __attribute__((ifunc("simpson_histogram_resolver")));
