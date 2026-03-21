@@ -265,14 +265,23 @@ jobs:
     - name: Check for SIMD instructions
       run: |
         chmod +x scripts/check_for_simd.sh
-        ./scripts/check_for_simd.sh || true
-    
+        found=0
+        for bin in $(find build -type f -executable -not -path "*/_deps/*" \( -name 'bench_*' -o -name 'test_*' \) 2>/dev/null); do
+          ./scripts/check_for_simd.sh "$bin" || true
+          found=1
+        done
+        [ "$found" -eq 0 ] && echo "No test/bench binaries found under build/"
+        true
+
     - name: Verify object files contain SIMD
       run: |
         echo "=== Checking for SIMD instructions in object files ==="
-        find build -name "*.o" -exec sh -c \
-          'objdump -d {} | grep -E "(vpx|vf|vmov|vadd|vmul|vsub)" && echo "Found SIMD in: {}"' \; \
-          || echo "Note: Some object files may not contain SIMD instructions (expected for scalar fallbacks)"
+        for obj in $(find build -name "*.o" -not -path "*/_deps/*"); do
+          if objdump -d "$obj" 2>/dev/null | grep -qE '(vmovups|vmovaps|vmovdqu|vaddp[sd]|vmulp[sd]|vsubp[sd]|vfmadd|vpxor|vpmaxu)'; then
+            echo "Found SIMD in: $obj"
+          fi
+        done
+        echo "SIMD object file check complete"
 
   simd-verification-arm:
     name: SIMD Instruction Verification (aarch64)
@@ -301,14 +310,23 @@ jobs:
     - name: Check for SIMD instructions
       run: |
         chmod +x scripts/check_for_simd.sh
-        ./scripts/check_for_simd.sh || true
+        found=0
+        for bin in $(find build -type f -executable -not -path "*/_deps/*" \( -name 'bench_*' -o -name 'test_*' \) 2>/dev/null); do
+          ./scripts/check_for_simd.sh "$bin" || true
+          found=1
+        done
+        [ "$found" -eq 0 ] && echo "No test/bench binaries found under build/"
+        true
 
     - name: Verify object files contain SIMD
       run: |
         echo "=== Checking for ARM SIMD instructions in object files ==="
-        find build -name "*.o" -exec sh -c \
-          'objdump -d {} | grep -E "(ld1|st1|fmla|fmul|fadd|whilelo|ptrue|cnt)" && echo "Found SIMD in: {}"' \; \
-          || echo "Note: Some object files may not contain SIMD instructions (expected for scalar fallbacks)"
+        for obj in $(find build -name "*.o" -not -path "*/_deps/*"); do
+          if objdump -d "$obj" 2>/dev/null | grep -qE '([{]v[0-9]|v[0-9]+\.[0-9]+[bhsd]|whilelo|ptrue|[{]z[0-9])'; then
+            echo "Found SIMD in: $obj"
+          fi
+        done
+        echo "ARM SIMD object file check complete"
 
   build-docs:
     name: Documentation Check
