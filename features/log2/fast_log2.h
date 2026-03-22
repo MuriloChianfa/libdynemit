@@ -125,7 +125,7 @@ fast_log2_pd_avx(__m256d x)
     const __m128d MAGIC_D   = _mm_set1_pd(4503599627370496.0);
     const __m128d BIAS128   = _mm_set1_pd(1023.0);
     const __m256d vSQRT2    = _mm256_set1_pd(SIMD_LOG2_SQRT2);
-    const __m256d HALF      = _mm256_set1_pd(0.5);
+    const __m256d NEG_HALF  = _mm256_set1_pd(-0.5);
     const __m256d ONE       = _mm256_set1_pd(1.0);
     const __m256d TWO       = _mm256_set1_pd(2.0);
 
@@ -150,9 +150,16 @@ fast_log2_pd_avx(__m256d x)
         _mm_or_si128(_mm_and_si128(xi_hi, MANT_MASK), EXP_1023));
     __m256d m = _mm256_set_m128d(m_hi, m_lo);
 
+    /*
+     * Arithmetic range reduction, avoids VBLENDVPD which is a throughput
+     * Both AND results and the subsequent add/mul are exact in IEEE 754
+     * The asm barrier prevents GCC from pattern-matching
+     * the arithmetic back into VBLENDVPD
+     */
     __m256d gt = _mm256_cmp_pd(m, vSQRT2, _CMP_GT_OQ);
-    m = _mm256_blendv_pd(m, _mm256_mul_pd(m, HALF), gt);
-    e = _mm256_blendv_pd(e, _mm256_add_pd(e, ONE), gt);
+    __asm__ volatile("" : "+x"(gt));
+    m = _mm256_mul_pd(m, _mm256_add_pd(ONE, _mm256_and_pd(gt, NEG_HALF)));
+    e = _mm256_add_pd(e, _mm256_and_pd(gt, ONE));
 
     __m256d f = _mm256_sub_pd(m, ONE);
     __m256d s = _mm256_div_pd(f, _mm256_add_pd(TWO, f));
