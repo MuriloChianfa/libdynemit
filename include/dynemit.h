@@ -43,6 +43,9 @@ extern "C" {
 #include <dynemit/hill.h>
 #include <dynemit/concentration.h>
 
+// Cardinality estimation
+#include <dynemit/hll.h>
+
 #ifdef __cplusplus
 }
 #endif

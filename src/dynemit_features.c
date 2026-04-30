@@ -24,6 +24,7 @@ dynemit_features(void)
         "topk",
         "hill",
         "concentration",
+        "hll",
         nullptr
     };
     return features;
