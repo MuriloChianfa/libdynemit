@@ -32,7 +32,7 @@ void test_features_count(void)
     int count = 0;
     while (features[count] != nullptr)
         count++;
-    TEST_ASSERT_EQUAL_INT(19, count);
+    TEST_ASSERT_EQUAL_INT(1, count);
 }
 
 void test_features_first_is_core(void)

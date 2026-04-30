@@ -19,6 +19,12 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 include(CompilerChecks)
 
+option(DYNEMIT_TS "Thread-safe scratch TLS" OFF)
+
+if(DYNEMIT_TS)
+    find_package(Threads REQUIRED)
+endif()
+
 # Default build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -65,6 +71,16 @@ foreach(FEATURE_DIR ${FEATURE_DIRS})
     endif()
 endforeach()
 
+if(TARGET entropy_obj AND TARGET hll_obj)
+    if(DYNEMIT_TS)
+        target_compile_definitions(entropy_obj PRIVATE DYNEMIT_TS=1)
+        target_compile_definitions(hll_obj PRIVATE DYNEMIT_TS=1)
+    else()
+        target_compile_definitions(entropy_obj PRIVATE DYNEMIT_TS=0)
+        target_compile_definitions(hll_obj PRIVATE DYNEMIT_TS=0)
+    endif()
+endif()
+
 # Optionally statically link all bench_* targets for portable bundles
 option(DYNEMIT_STATIC_BENCHMARKS "Statically link benchmarks" OFF)
 if(DYNEMIT_STATIC_BENCHMARKS)
@@ -101,7 +117,11 @@ target_include_directories(dynemit_static
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(dynemit_static PUBLIC m)
+if(DYNEMIT_TS)
+    target_link_libraries(dynemit_static PUBLIC m Threads::Threads)
+else()
+    target_link_libraries(dynemit_static PUBLIC m)
+endif()
 
 target_compile_definitions(dynemit_static PUBLIC DYNEMIT_ALL_FEATURES)
 
@@ -123,7 +143,11 @@ target_include_directories(dynemit_shared
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(dynemit_shared PUBLIC m)
+if(DYNEMIT_TS)
+    target_link_libraries(dynemit_shared PUBLIC m Threads::Threads)
+else()
+    target_link_libraries(dynemit_shared PUBLIC m)
+endif()
 
 target_compile_definitions(dynemit_shared PUBLIC DYNEMIT_ALL_FEATURES)
 
@@ -143,6 +167,7 @@ message(STATUS "C Compiler Ver:    ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "Architecture:      ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "x86 SIMD Support:  ${X86_ARCH}")
 message(STATUS "ARM SIMD Support:  ${ARM_ARCH}")
+message(STATUS "Thread-safe (DYNEMIT_TS): ${DYNEMIT_TS}")
 message(STATUS "Install prefix:    ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "============================================")
 message(STATUS "")

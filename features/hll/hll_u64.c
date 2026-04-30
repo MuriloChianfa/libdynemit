@@ -14,11 +14,6 @@
 
 #include "hll.h"
 
-/*
- * The hll_regs_tls buffer is defined in hll_u32.c and shared with this
- * translation unit via the extern declaration in "hll.h".  Threads reuse
- * the same scratch sketch across u32 and u64 calls.
- */
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
 #endif

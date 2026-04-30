@@ -17,8 +17,9 @@ extern "C" {
  * of distinct values. Internally uses a compile-time-sized sketch of
  * m = 2^DYNEMIT_HLL_P 8-bit registers (default p=10, m=1024, ~3.25% std error).
  *
- * The sketch lives in a thread-local scratch buffer reused across calls
- * (lazy-allocated; zeroed after each estimate).
+ * The sketch lives in a per-thread scratch buffer reused across calls
+ * (lazy-allocated; zeroed after each estimate). With CMake option DYNEMIT_TS=ON,
+ * storage uses pthread TSD and is freed when the thread exits (LeakSanitizer-friendly).
  *
  * Algorithm:
  *   - 64-bit branchless SplitMix64 hash of each element

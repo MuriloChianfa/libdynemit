@@ -14,7 +14,9 @@
 
 #include "hll.h"
 
-_Thread_local uint8_t *hll_regs_tls = NULL;
+#if !DYNEMIT_TS
+uint8_t *hll_regs_tls = NULL;
+#endif
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))

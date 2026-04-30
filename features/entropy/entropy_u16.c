@@ -10,6 +10,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#if DYNEMIT_TS
+#include <pthread.h>
+#endif
 #include <dynemit/entropy.h>
 #include <dynemit/compiler.h>
 
@@ -43,21 +46,71 @@
  */
 #define EU16_FUSED_THRESHOLD (EU16_BINS / 4)
 
-static _Thread_local void *eu16_tls = NULL;
+#if DYNEMIT_TS
+static pthread_key_t eu16_tls_key;
+static pthread_once_t eu16_tls_once = PTHREAD_ONCE_INIT;
+static int eu16_tls_pthread_ok;
+
+static _Thread_local void *eu16_tls_fallback;
+
+static void
+eu16_tls_destructor(void *p)
+{
+    free(p);
+}
+
+static void
+eu16_tls_init_once(void)
+{
+    eu16_tls_pthread_ok = (pthread_key_create(&eu16_tls_key, eu16_tls_destructor) == 0);
+}
 
 static inline int
 eu16_get_bufs(uint32_t **hist, uint16_t **dirty)
 {
+    void *eu16_tls = NULL;
+
+    pthread_once(&eu16_tls_once, eu16_tls_init_once);
+    if (eu16_tls_pthread_ok)
+        eu16_tls = pthread_getspecific(eu16_tls_key);
+    else
+        eu16_tls = eu16_tls_fallback;
+
     if (__builtin_expect(!eu16_tls, 0)) {
         size_t sz = EU16_BINS * sizeof(uint32_t) + EU16_BINS * sizeof(uint16_t);
         eu16_tls = aligned_alloc(64, sz);
         if (!eu16_tls) return -1;
         memset(eu16_tls, 0, EU16_BINS * sizeof(uint32_t));
+        if (eu16_tls_pthread_ok) {
+            if (pthread_setspecific(eu16_tls_key, eu16_tls) != 0) {
+                free(eu16_tls);
+                return -1;
+            }
+        } else {
+            eu16_tls_fallback = eu16_tls;
+        }
     }
     *hist  = (uint32_t *)eu16_tls;
     *dirty = (uint16_t *)((char *)eu16_tls + EU16_BINS * sizeof(uint32_t));
     return 0;
 }
+#else
+static void *eu16_bufs = NULL;
+
+static inline int
+eu16_get_bufs(uint32_t **hist, uint16_t **dirty)
+{
+    if (__builtin_expect(!eu16_bufs, 0)) {
+        size_t sz = EU16_BINS * sizeof(uint32_t) + EU16_BINS * sizeof(uint16_t);
+        eu16_bufs = aligned_alloc(64, sz);
+        if (!eu16_bufs) return -1;
+        memset(eu16_bufs, 0, EU16_BINS * sizeof(uint32_t));
+    }
+    *hist  = (uint32_t *)eu16_bufs;
+    *dirty = (uint16_t *)((char *)eu16_bufs + EU16_BINS * sizeof(uint32_t));
+    return 0;
+}
+#endif
 
 static inline void
 eu16_cleanup(uint32_t *hist, const uint16_t *dirty,

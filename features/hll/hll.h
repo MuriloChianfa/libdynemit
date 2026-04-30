@@ -97,7 +97,10 @@ hll_max_u8(uint8_t a, uint8_t b)
     return (uint8_t)(a ^ ((a ^ b) & (uint8_t)(-(int8_t)(a < b))));
 }
 
-extern _Thread_local uint8_t *hll_regs_tls;
+#if DYNEMIT_TS
+uint8_t *hll_get_regs(void);
+#else
+extern uint8_t *hll_regs_tls;
 
 static inline uint8_t *
 hll_get_regs(void)
@@ -109,6 +112,7 @@ hll_get_regs(void)
     }
     return hll_regs_tls;
 }
+#endif
 
 static inline void
 hll_reset_regs(uint8_t *regs)
