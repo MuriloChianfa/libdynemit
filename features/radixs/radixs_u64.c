@@ -15,6 +15,16 @@
 #define RADIXS_U64_PASSES 8
 #define RADIXS_U64_BUCKETS 256
 
+/*
+ * ISO C11 aligned_alloc() requires the requested size to be a multiple of
+ * the alignment, and glibc's allocator (as well as the AddressSanitizer
+ * allocator interceptor) treats violations as hard failures. Round the scratch
+ * size up to the next multiple of 64 bytes so the call is well-defined for
+ * every n. The overhead is at most 63 bytes per call.
+ */
+#define RADIXS_U64_TMP_BYTES(n) \
+    ((((size_t)(n) * sizeof(uint64_t)) + (size_t)63) & ~(size_t)63)
+
 static int
 radixs_u64_cmp(const void *a, const void *b)
 {
@@ -103,7 +113,7 @@ radixs_u64_run(const uint64_t *in, uint64_t *out, size_t n)
         radixs_u64_qsort_fallback(in, out, n);
         return;
     }
-    uint64_t *tmp = aligned_alloc(64, n * sizeof(uint64_t));
+    uint64_t *tmp = aligned_alloc(64, RADIXS_U64_TMP_BYTES(n));
     if (!tmp) {
         free(hist);
         radixs_u64_qsort_fallback(in, out, n);
@@ -228,7 +238,7 @@ radixs_u64_avx2(const uint64_t *in, uint64_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U64_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS);
     if (!hist) { radixs_u64_qsort_fallback(in, out, n); return; }
-    uint64_t *tmp = aligned_alloc(64, n * sizeof(uint64_t));
+    uint64_t *tmp = aligned_alloc(64, RADIXS_U64_TMP_BYTES(n));
     if (!tmp) { free(hist); radixs_u64_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u64_build_histograms_avx2(in, n, hist);
@@ -311,7 +321,7 @@ radixs_u64_avx512f(const uint64_t *in, uint64_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U64_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS);
     if (!hist) { radixs_u64_qsort_fallback(in, out, n); return; }
-    uint64_t *tmp = aligned_alloc(64, n * sizeof(uint64_t));
+    uint64_t *tmp = aligned_alloc(64, RADIXS_U64_TMP_BYTES(n));
     if (!tmp) { free(hist); radixs_u64_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u64_build_histograms_avx2(in, n, hist);
@@ -405,7 +415,7 @@ radixs_u64_avx512_vbmi2(const uint64_t *in, uint64_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U64_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS);
     if (!hist) { radixs_u64_qsort_fallback(in, out, n); return; }
-    uint64_t *tmp = aligned_alloc(64, n * sizeof(uint64_t));
+    uint64_t *tmp = aligned_alloc(64, RADIXS_U64_TMP_BYTES(n));
     if (!tmp) { free(hist); radixs_u64_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u64_build_histograms_avx2(in, n, hist);

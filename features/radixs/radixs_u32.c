@@ -16,6 +16,16 @@
 #define RADIXS_U32_BUCKETS 256
 
 /*
+ * ISO C11 aligned_alloc() requires the requested size to be a multiple of
+ * the alignment, and glibc's allocator (as well as the AddressSanitizer
+ * allocator interceptor) treats violations as hard failures. Round the scratch
+ * size up to the next multiple of 64 bytes so the call is well-defined for
+ * every n. The overhead is at most 63 bytes per call.
+ */
+#define RADIXS_U32_TMP_BYTES(n) \
+    ((((size_t)(n) * sizeof(uint32_t)) + (size_t)63) & ~(size_t)63)
+
+/*
  * Comparator and qsort fallback used when scratch allocation fails so the
  * function still returns a sorted result rather than silently failing.
  */
@@ -115,7 +125,7 @@ radixs_u32_run(const uint32_t *in, uint32_t *out, size_t n)
         radixs_u32_qsort_fallback(in, out, n);
         return;
     }
-    uint32_t *tmp = aligned_alloc(64, n * sizeof(uint32_t));
+    uint32_t *tmp = aligned_alloc(64, RADIXS_U32_TMP_BYTES(n));
     if (!tmp) {
         free(hist);
         radixs_u32_qsort_fallback(in, out, n);
@@ -263,7 +273,7 @@ radixs_u32_avx2_run(const uint32_t *in, uint32_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U32_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS);
     if (!hist) { radixs_u32_qsort_fallback(in, out, n); return; }
-    uint32_t *tmp = aligned_alloc(64, n * sizeof(uint32_t));
+    uint32_t *tmp = aligned_alloc(64, RADIXS_U32_TMP_BYTES(n));
     if (!tmp) { free(hist); radixs_u32_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u32_build_histograms_avx2(in, n, hist);
@@ -355,7 +365,7 @@ radixs_u32_avx512f(const uint32_t *in, uint32_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U32_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS);
     if (!hist) { radixs_u32_qsort_fallback(in, out, n); return; }
-    uint32_t *tmp = aligned_alloc(64, n * sizeof(uint32_t));
+    uint32_t *tmp = aligned_alloc(64, RADIXS_U32_TMP_BYTES(n));
     if (!tmp) { free(hist); radixs_u32_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u32_build_histograms_avx2(in, n, hist);
@@ -447,7 +457,7 @@ radixs_u32_avx512_vbmi2(const uint32_t *in, uint32_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U32_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS);
     if (!hist) { radixs_u32_qsort_fallback(in, out, n); return; }
-    uint32_t *tmp = aligned_alloc(64, n * sizeof(uint32_t));
+    uint32_t *tmp = aligned_alloc(64, RADIXS_U32_TMP_BYTES(n));
     if (!tmp) { free(hist); radixs_u32_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u32_build_histograms_avx2(in, n, hist);
