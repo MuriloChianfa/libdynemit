@@ -298,6 +298,21 @@ Headers: `<dynemit/histogram.h>`, `<dynemit/topk.h>`, `<dynemit/hill.h>`, `<dyne
 
 </details>
 
+<details>
+<summary><b>Sorting</b></summary>
+
+| Function | Description |
+|---|---|
+| `radixs_u16(in, out, n)` | 16-bit counting sort (no caller scratch) |
+| `radixs_u32(in, out, n)` | 8-bit LSD radix sort (4 passes); falls back to qsort if scratch alloc fails |
+| `radixs_u64(in, out, n)` | 8-bit LSD radix sort (8 passes); falls back to qsort if scratch alloc fails |
+
+Header: `<dynemit/radixs.h>`
+
+The AVX-512F and AVX-512 VBMI2 variants use `vpconflictd`/`vpconflictq` to detect within-vector duplicates and `vpscatterdd`/`vpscatterqq` for the scatter pass; the VBMI2 path additionally uses `vpermb` to extract digit bytes in a single permute.
+
+</details>
+
 ## Library Usage Options
 
 The library provides flexible usage options depending on your needs:
@@ -487,7 +502,7 @@ extern "C" void my_func(float* out, const float* in, size_t n)
 ### 1. CPU Feature Detection
 
 The `detect_simd_level()` function uses CPUID and XGETBV instructions to query:
-- Available instruction set extensions (SSE2, SSE4.2, AVX, AVX2, AVX-512F)
+- Available instruction set extensions (SSE2, SSE4.2, AVX, AVX2, AVX-512F, AVX-512 VBMI2)
 - OS support for saving/restoring SIMD register state (XCR0)
 
 ```c

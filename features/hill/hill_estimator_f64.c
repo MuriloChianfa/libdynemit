@@ -33,7 +33,7 @@ hill_estimator_f64_scalar(const uint64_t *sorted_desc, size_t n)
 
     double threshold = (double)sorted_desc[k];
     double log_sum = 0.0;
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < k; i++)
         log_sum += log((double)sorted_desc[i] / threshold);
     return log_sum / (double)k;
@@ -106,6 +106,7 @@ hill_estimator_f64_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return hill_estimator_f64_avx512f;
     case SIMD_AVX2:    return hill_estimator_f64_avx2;
     case SIMD_AVX:     return hill_estimator_f64_avx;

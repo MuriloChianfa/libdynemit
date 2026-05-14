@@ -16,7 +16,7 @@ DYNEMIT_NO_AUTOVECTORIZE
 static void
 sub_f32_scalar(const float *a, const float *b, float *out, size_t n)
 {
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++)
         out[i] = a[i] - b[i];
 }
@@ -166,6 +166,7 @@ sub_f32_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return sub_f32_avx512f;
     case SIMD_AVX2:    return sub_f32_avx2;
     case SIMD_AVX:     return sub_f32_avx;

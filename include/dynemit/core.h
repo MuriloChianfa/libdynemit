@@ -22,6 +22,7 @@ typedef enum {
     SIMD_AVX = 3,
     SIMD_AVX2 = 4,
     SIMD_AVX512F = 5,
+    SIMD_AVX512_VBMI2 = 6,
     // AArch64
     SIMD_NEON = 10,
     SIMD_SVE = 11,
@@ -75,7 +76,8 @@ const char *simd_level_name(simd_level_t level);
  */
 #if defined(__x86_64__) || defined(__i386__)
 static const simd_level_t DYNEMIT_SIMD_LEVELS[] = {
-    SIMD_SCALAR, SIMD_SSE2, SIMD_SSE4_2, SIMD_AVX, SIMD_AVX2, SIMD_AVX512F
+    SIMD_SCALAR, SIMD_SSE2, SIMD_SSE4_2, SIMD_AVX,
+    SIMD_AVX2, SIMD_AVX512F, SIMD_AVX512_VBMI2
 };
 #elif defined(__aarch64__)
 static const simd_level_t DYNEMIT_SIMD_LEVELS[] = {

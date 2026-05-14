@@ -22,7 +22,7 @@ skewness_f64_scalar(const double *data, size_t n)
     if (n < 3) return 0.0;
     double m = mean_f64(data, n);
     double sum2 = 0.0, sum3 = 0.0;
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
         double d  = data[i] - m;
         double d2 = d * d;
@@ -246,6 +246,7 @@ skewness_f64_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return skewness_f64_avx512f;
     case SIMD_AVX2:    return skewness_f64_avx2;
     case SIMD_AVX:     return skewness_f64_avx;

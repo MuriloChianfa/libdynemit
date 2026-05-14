@@ -33,7 +33,7 @@ histogram_u16_scalar(const uint16_t *data, size_t n,
                            uint64_t *out)
 {
     memset(out, 0, (num_boundaries + 1) * sizeof(uint64_t));
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
         uint16_t val = data[i];
         size_t bucket = num_boundaries;
@@ -193,6 +193,7 @@ histogram_u16_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return histogram_u16_avx512f;
     case SIMD_AVX2:    return histogram_u16_avx2;
     case SIMD_AVX:     return histogram_u16_avx;

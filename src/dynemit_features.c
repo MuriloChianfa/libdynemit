@@ -25,6 +25,7 @@ dynemit_features(void)
         "hill",
         "concentration",
         "hll",
+        "radixs",
         nullptr
     };
     return features;

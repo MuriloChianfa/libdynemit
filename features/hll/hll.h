@@ -233,7 +233,7 @@ hll_finalize_scalar(const uint8_t *regs)
 {
     unsigned histo[DYNEMIT_HLL_MAX_RANK + 1];
     for (unsigned i = 0; i <= DYNEMIT_HLL_MAX_RANK; i++) histo[i] = 0;
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (unsigned i = 0; i < DYNEMIT_HLL_M; i++) histo[regs[i]]++;
     return hll_estimate_from_histogram(histo);
 }

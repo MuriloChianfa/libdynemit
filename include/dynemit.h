@@ -46,6 +46,9 @@ extern "C" {
 // Cardinality estimation
 #include <dynemit/hll.h>
 
+// Sorting
+#include <dynemit/radixs.h>
+
 #ifdef __cplusplus
 }
 #endif

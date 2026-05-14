@@ -19,7 +19,7 @@ max_u16_scalar(const uint16_t *data, size_t n)
 {
     if (n == 0) return 0.0;
     uint16_t result = data[0];
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 1; i < n; i++)
         if (data[i] > result) result = data[i];
     return (double)result;
@@ -152,6 +152,7 @@ max_u16_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return max_u16_avx512f;
     case SIMD_AVX2:    return max_u16_avx2;
     case SIMD_AVX:     return max_u16_avx;

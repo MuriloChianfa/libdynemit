@@ -25,7 +25,7 @@ hll_u64_scalar(const uint64_t *data, size_t n)
     uint8_t *regs = hll_get_regs();
     if (!regs) return 0.0;
 
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
         uint64_t h   = hll_mix64(data[i]);
         uint32_t idx = hll_idx(h);
@@ -158,6 +158,7 @@ hll_u64_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return hll_u64_avx512f;
     case SIMD_AVX2:    return hll_u64_avx2;
     case SIMD_AVX:     return hll_u64_avx;

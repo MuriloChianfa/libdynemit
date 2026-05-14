@@ -35,7 +35,7 @@ hhi_u32_scalar(const uint32_t *data, size_t n)
     double total = (double)n;
     double sum_sq = 0.0;
     size_t i = 0;
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     while (i < n) {
         uint32_t val = sorted[i];
         size_t count = 0;
@@ -206,6 +206,7 @@ hhi_u32_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return hhi_u32_avx512f;
     case SIMD_AVX2:    return hhi_u32_avx2;
     case SIMD_AVX:     return hhi_u32_avx;

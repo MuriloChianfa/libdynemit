@@ -21,12 +21,12 @@ simpson_histogram_scalar(const uint64_t *counts, size_t n)
 {
     if (n == 0) return 0.0;
     double total = 0.0;
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++)
         total += (double)counts[i];
     if (total == 0.0) return 0.0;
     double sum_sq = 0.0;
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
         double p = (double)counts[i] / total;
         sum_sq += p * p;
@@ -168,6 +168,7 @@ simpson_histogram_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return simpson_histogram_avx512f;
     case SIMD_AVX2:    return simpson_histogram_avx2;
     case SIMD_AVX:     return simpson_histogram_avx;

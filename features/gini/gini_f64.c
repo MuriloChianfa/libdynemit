@@ -29,7 +29,7 @@ gini_f64_scalar(const double *sorted_data, size_t n)
     if (n == 0) return 0.0;
     double weighted_sum = 0.0;
     double total_sum = 0.0;
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
         weighted_sum += (double)(i + 1) * sorted_data[i];
         total_sum += sorted_data[i];
@@ -307,6 +307,7 @@ gini_f64_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return gini_f64_avx512f;
     case SIMD_AVX2:    return gini_f64_avx2;
     case SIMD_AVX:     return gini_f64_avx;

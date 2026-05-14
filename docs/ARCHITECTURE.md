@@ -147,6 +147,7 @@ simd_level_t detect_simd_level(void)
 - **AVX**: CPUID.01H:ECX[28] + XCR0[2:1] (OS support)
 - **AVX2**: CPUID.07H:EBX[5] + XCR0[2:1]
 - **AVX-512F**: CPUID.07H:EBX[16] + XCR0[7:5] (ZMM state)
+- **AVX-512 VBMI2**: CPUID.07H:ECX[6] + AVX-512F + XCR0[7:5]
 
 ## Feature Registry
 
@@ -245,7 +246,7 @@ __attribute__((target("default")))
 DYNEMIT_NO_AUTOVECTORIZE
 static void feature_scalar(...)
 {
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     /* ... */
 }
 

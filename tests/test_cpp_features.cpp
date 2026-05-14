@@ -13,12 +13,13 @@ TEST(CppFeatures, SimdLevelNames) {
         simd_level_t level;
         const char* expected;
     } cases[] = {
-        {SIMD_SCALAR,  "Scalar"},
-        {SIMD_SSE2,    "SSE2"},
-        {SIMD_SSE4_2,  "SSE4.2"},
-        {SIMD_AVX,     "AVX"},
-        {SIMD_AVX2,    "AVX2"},
-        {SIMD_AVX512F, "AVX-512F"},
+        {SIMD_SCALAR,       "Scalar"},
+        {SIMD_SSE2,         "SSE2"},
+        {SIMD_SSE4_2,       "SSE4.2"},
+        {SIMD_AVX,          "AVX"},
+        {SIMD_AVX2,         "AVX2"},
+        {SIMD_AVX512F,      "AVX-512F"},
+        {SIMD_AVX512_VBMI2, "AVX-512VBMI2"},
     };
 
     for (const auto& c : cases) {
@@ -35,7 +36,7 @@ TEST(CppFeatures, RuntimeDetection) {
         << "detect_simd_level() and detect_simd_level_ts() disagree";
 
     EXPECT_GE(static_cast<int>(detected), static_cast<int>(SIMD_SCALAR));
-    EXPECT_LE(static_cast<int>(detected), static_cast<int>(SIMD_AVX512F));
+    EXPECT_LE(static_cast<int>(detected), static_cast<int>(SIMD_AVX512_VBMI2));
 }
 
 TEST(CppFeatures, FeatureList) {

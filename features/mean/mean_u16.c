@@ -105,6 +105,7 @@ mean_u16_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return mean_u16_avx512f;
     case SIMD_AVX2:    return mean_u16_avx2;
     case SIMD_AVX:     return mean_u16_avx;

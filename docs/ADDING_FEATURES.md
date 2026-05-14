@@ -6,7 +6,7 @@ This guide explains how to add new SIMD-optimized features to the dynemit librar
 
 The dynemit library uses a modular architecture where each feature:
 - Has its own directory under `features/`
-- Provides multiple SIMD implementations (scalar, SSE2, SSE4.2, AVX, AVX2, AVX-512F)
+- Provides multiple SIMD implementations (scalar, SSE2, SSE4.2, AVX, AVX2, AVX-512F, AVX-512 VBMI2)
 - Uses the `ifunc` mechanism (GCC and Clang) for runtime dispatch
 - Can be built as both an individual library and part of the all-in-one bundle
 
@@ -46,7 +46,7 @@ DYNEMIT_NO_AUTOVECTORIZE
 static void
 my_feature_f32_scalar(const float *a, const float *b, float *out, size_t n)
 {
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++)
         out[i] = /* your operation here */;
 }

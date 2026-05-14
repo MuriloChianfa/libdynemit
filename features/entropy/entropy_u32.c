@@ -39,7 +39,7 @@ entropy_u32_scalar(const uint32_t *data, size_t n)
     if (!cnts) { free(sorted); return 0.0; }
     size_t num_cnts = 0;
     uint64_t run = 1;
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 1; i < n; i++) {
         if (sorted[i] == sorted[i - 1]) {
             run++;
@@ -342,6 +342,7 @@ entropy_u32_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return entropy_u32_avx512f;
     case SIMD_AVX2:    return entropy_u32_avx2;
     case SIMD_AVX:     return entropy_u32_avx;

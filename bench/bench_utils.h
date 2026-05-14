@@ -365,6 +365,7 @@ bench_parse_level(const char *s, simd_level_t *out)
     if (strcmp(s, "avx")     == 0) { *out = SIMD_AVX;     return 0; }
     if (strcmp(s, "avx2")    == 0) { *out = SIMD_AVX2;    return 0; }
     if (strcmp(s, "avx512f") == 0) { *out = SIMD_AVX512F; return 0; }
+    if (strcmp(s, "avx512vbmi2") == 0) { *out = SIMD_AVX512_VBMI2; return 0; }
     if (strcmp(s, "neon")    == 0) { *out = SIMD_NEON;    return 0; }
     if (strcmp(s, "sve")     == 0) { *out = SIMD_SVE;     return 0; }
     if (strcmp(s, "sve2")    == 0) { *out = SIMD_SVE2;    return 0; }
@@ -390,7 +391,7 @@ bench_parse_opts(int argc, char **argv, bench_opts_t *opts,
             i++;
             if (bench_parse_level(argv[i], &opts->force_level) != 0) {
                 fprintf(stderr, "Error: Unknown SIMD level '%s'\n", argv[i]);
-                fprintf(stderr, "Valid: scalar, sse2, sse4.2, avx, avx2, avx512f, neon, sve, sve2\n");
+                fprintf(stderr, "Valid: scalar, sse2, sse4.2, avx, avx2, avx512f, avx512vbmi2, neon, sve, sve2\n");
                 return -1;
             }
             opts->force_level_set = 1;
@@ -400,7 +401,7 @@ bench_parse_opts(int argc, char **argv, bench_opts_t *opts,
             printf("Options:\n");
             printf("  --csv              CSV output to stdout\n");
             printf("  --force-level LVL  Force SIMD level\n"
-                   "                     x86: scalar, sse2, sse4.2, avx, avx2, avx512f\n"
+                   "                     x86: scalar, sse2, sse4.2, avx, avx2, avx512f, avx512vbmi2\n"
                    "                     ARM: scalar, neon, sve, sve2\n");
             printf("  --auto-detect      Auto-detect CPU, write CSV to file\n");
             printf("  --help, -h         Show this help\n");

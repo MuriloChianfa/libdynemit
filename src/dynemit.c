@@ -83,13 +83,15 @@ detect_simd_level(void)
     // Extended features
     uint32_t eax7, ebx7, ecx7, edx7;
     cpuid_x86(7, 0, &eax7, &ebx7, &ecx7, &edx7);
-    int avx2    = (ebx7 >> 5) & 1;
-    int avx512f = (ebx7 >> 16) & 1;
+    int avx2         = (ebx7 >> 5) & 1;
+    int avx512f      = (ebx7 >> 16) & 1;
+    int avx512vbmi   = (ecx7 >> 1) & 1;
+    int avx512vbmi2  = (ecx7 >> 6) & 1;
 
     int ymm_ok = osxsave && ((xcr0 & 0x6) == 0x6);
     int zmm_ok = osxsave && ((xcr0 & 0xE0) == 0xE0);
 
-    // Prioritize fastest version
+    if (avx && avx512f && avx512vbmi && avx512vbmi2 && zmm_ok) return SIMD_AVX512_VBMI2;
     if (avx && avx512f && zmm_ok) return SIMD_AVX512F;
     if (avx && avx2 && ymm_ok) return SIMD_AVX2;
     if (avx && ymm_ok) return SIMD_AVX;
@@ -128,6 +130,7 @@ const char *
 simd_level_name(simd_level_t level)
 {
     switch (level) {
+        case SIMD_AVX512_VBMI2: return "AVX-512VBMI2";
         case SIMD_AVX512F: return "AVX-512F";
         case SIMD_AVX2:    return "AVX2";
         case SIMD_AVX:     return "AVX";

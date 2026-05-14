@@ -22,12 +22,12 @@ simpson_u16_scalar(const uint16_t *data, size_t n)
     if (n == 0) return 0.0;
     uint64_t hist[65536];
     memset(hist, 0, sizeof(hist));
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++)
         hist[data[i]]++;
     double total = (double)n;
     double sum_sq = 0.0;
-    DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
+DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < 65536; i++) {
         if (hist[i] == 0) continue;
         double p = (double)hist[i] / total;
@@ -158,6 +158,7 @@ simpson_u16_select(simd_level_t level)
 {
     switch (level) {
 #if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
     case SIMD_AVX512F: return simpson_u16_avx512f;
     case SIMD_AVX2:    return simpson_u16_avx2;
     case SIMD_AVX:     return simpson_u16_avx;

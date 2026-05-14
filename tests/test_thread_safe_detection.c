@@ -55,7 +55,7 @@ void test_ts_thread_safety(void)
 void test_ts_valid_range(void)
 {
     simd_level_t level = detect_simd_level_ts();
-    TEST_ASSERT_TRUE(level >= SIMD_SCALAR && level <= SIMD_AVX512F);
+    TEST_ASSERT_TRUE(level >= SIMD_SCALAR && level <= SIMD_AVX512_VBMI2);
 }
 
 int main(void)
