@@ -101,7 +101,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        clang-version: [16, 17, 18, 19, 20]
+        clang-version: [16, 17, 18, 19, 20, 21]
         build-type: [Debug, Release]
         arch: [x86_64, aarch64]
         include:
@@ -115,10 +115,9 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Add LLVM apt repository
-      if: matrix.arch == 'aarch64'
       run: |
         wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-        echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble main" | sudo tee /etc/apt/sources.list.d/llvm.list
+        echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-${{ matrix.clang-version }} main" | sudo tee /etc/apt/sources.list.d/llvm.list
 
     - name: Install Clang ${{ matrix.clang-version }}
       run: |
@@ -155,7 +154,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        clang-version: [16, 17, 18, 19, 20]
+        clang-version: [16, 17, 18, 19, 20, 21]
         build-type: [Debug, Release]
         arch: [x86_64, aarch64]
         include:
@@ -169,10 +168,9 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Add LLVM apt repository
-      if: matrix.arch == 'aarch64'
       run: |
         wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-        echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble main" | sudo tee /etc/apt/sources.list.d/llvm.list
+        echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-${{ matrix.clang-version }} main" | sudo tee /etc/apt/sources.list.d/llvm.list
 
     - name: Install Clang ${{ matrix.clang-version }}
       run: |
