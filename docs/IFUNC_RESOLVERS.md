@@ -194,6 +194,6 @@ The `#pragma GCC diagnostic` directives used to suppress `-Wpedantic` warnings a
 
 - [GNU IFUNC Documentation](https://sourceware.org/glibc/wiki/GNU_IFUNC)
 - [dlopen Man Page](https://man7.org/linux/man-pages/man3/dlopen.3.html)
-- [C11 Atomics](https://en.cppreference.com/w/c/atomic)
+- [C11 Atomics](https://clang.llvm.org/docs/LanguageExtensions.html#c11-atomic-operations)
 - [GCC Function Attributes](https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html)
 - [Clang Attributes Reference](https://clang.llvm.org/docs/AttributeReference.html)

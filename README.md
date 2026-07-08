@@ -2,7 +2,7 @@
 
 <h1 align="center">libdynemit</h1>
 
-[![C23](https://img.shields.io/badge/std-C23-blue.svg)](https://en.cppreference.com/w/c/23)
+[![C23](https://img.shields.io/badge/std-C23-blue.svg)](https://gcc.gnu.org/onlinedocs/gcc/Standards.html)
 [![codecov](https://codecov.io/gh/MuriloChianfa/libdynemit/graph/badge.svg)](https://codecov.io/gh/MuriloChianfa/libdynemit)
 [![CMake](https://img.shields.io/badge/CMake-3.16+-green.svg)](https://cmake.org/)
 [![GCC](https://img.shields.io/badge/GCC-13%2B-green.svg)](https://gcc.gnu.org/)
