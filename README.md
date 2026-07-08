@@ -279,8 +279,9 @@ Convenience header `<dynemit/stats.h>` includes all of the above.
 | `simpson_u16` / `simpson_u32` / `simpson_histogram` | Simpson's diversity index |
 | `hhi_u16` / `hhi_u32` / `hhi_histogram` | Herfindahl-Hirschman Index |
 | `gini_f64` / `gini_u64` | Gini coefficient (requires sorted input) |
+| `hll_u32` / `hll_u64` | HyperLogLog++ approximate distinct-count estimator |
 
-Headers: `<dynemit/entropy.h>`, `<dynemit/simpson.h>`, `<dynemit/hhi.h>`, `<dynemit/gini.h>`
+Headers: `<dynemit/entropy.h>`, `<dynemit/simpson.h>`, `<dynemit/hhi.h>`, `<dynemit/gini.h>`, `<dynemit/hll.h>`
 
 </details>
 
