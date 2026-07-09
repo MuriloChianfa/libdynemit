@@ -101,7 +101,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        clang-version: [16, 17, 18, 19, 20, 21]
+        clang-version: [17, 18, 19, 20, 21]
         build-type: [Debug, Release]
         arch: [x86_64, aarch64]
         include:
@@ -154,7 +154,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        clang-version: [16, 17, 18, 19, 20, 21]
+        clang-version: [17, 18, 19, 20, 21]
         build-type: [Debug, Release]
         arch: [x86_64, aarch64]
         include:
@@ -235,6 +235,50 @@ jobs:
       with:
         name: cppcheck-report
         path: cppcheck-report.txt
+
+  clang-tidy-performance:
+    name: clang-tidy
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Add LLVM apt repository
+      run: |
+        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+        echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+
+    - name: Install Clang 21 and clang-tidy
+      run: |
+        sudo apt update
+        sudo apt install -y clang-21 clang-tidy-21
+
+    - name: Install CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.25.x'
+
+    - name: Configure CMake
+      run: |
+        cmake -B build-tidy \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_COMPILER=clang-21 \
+          -DCMAKE_CXX_COMPILER=clang++-21
+
+    - name: Run clang-tidy
+      run: |
+        run-clang-tidy-21 -p build-tidy \
+          -checks='performance-*' \
+          -header-filter=.* \
+          'features/[^/]+/[^/]+\.c' 2>&1 | tee clang-tidy-report.txt
+
+    - name: Upload clang-tidy report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: clang-tidy-performance-report
+        path: clang-tidy-report.txt
 
   simd-verification:
     name: SIMD Instruction Verification (x86_64)

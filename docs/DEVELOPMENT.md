@@ -57,6 +57,25 @@ cmake --build build --target coverage
 Open `build/coverage_report/index.html` in a browser. Requires GCC (for gcov),
 `lcov`, and `genhtml`.
 
+## Static Analysis (clang-tidy)
+
+Requires clang and clang-tidy. Configure a dedicated clang build so `compile_commands.json` reflects clang
+flags (the default `build/` directory may have been generated with GCC):
+
+```bash
+cmake -B build-tidy -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+```
+
+Run clang-tidy on feature implementations only (excludes `tests/` and
+`benchmarks/` subdirectories):
+
+```bash
+run-clang-tidy-21 -p build-tidy -checks='performance-*' -header-filter=.* 'features/[^/]+/[^/]+\.c'
+```
+
+This check also runs in CI (see the `clang-tidy-performance` job in `.github/workflows/ci.yml`).
+
 ## Mutation Testing (Mull)
 
 Mull injects mutations into compiled bitcode to verify test quality. It requires
