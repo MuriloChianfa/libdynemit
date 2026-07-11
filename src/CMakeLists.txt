@@ -50,5 +50,7 @@ install(TARGETS dynemit_core
 install(FILES 
     ${PROJECT_SOURCE_DIR}/include/dynemit/core.h
     ${PROJECT_SOURCE_DIR}/include/dynemit/err.h
+    ${PROJECT_SOURCE_DIR}/include/dynemit/stats.h
+    ${PROJECT_SOURCE_DIR}/include/dynemit/compiler.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit
 )

@@ -398,6 +398,22 @@ jobs:
         done
         echo "ARM SIMD object file check complete"
 
+  consumer-install-smoke:
+    name: Consumer Install Smoke
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake pkg-config g++
+
+    - name: Run consumer install smoke
+      run: ./scripts/consumer_smoke.sh
+
   build-docs:
     name: Documentation Check
     runs-on: ubuntu-latest
