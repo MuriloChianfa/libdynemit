@@ -55,7 +55,8 @@ void test_ts_thread_safety(void)
 void test_ts_valid_range(void)
 {
     simd_level_t level = detect_simd_level_ts();
-    TEST_ASSERT_TRUE(level >= SIMD_SCALAR && level <= SIMD_AVX512_VBMI2);
+    simd_level_t max_level = DYNEMIT_SIMD_LEVELS[DYNEMIT_N_LEVELS - 1];
+    TEST_ASSERT_TRUE(level >= SIMD_SCALAR && level <= max_level);
 }
 
 int main(void)

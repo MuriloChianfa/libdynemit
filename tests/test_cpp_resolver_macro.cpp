@@ -4,11 +4,16 @@
  * Tests that the EXPLICIT_RUNTIME_RESOLVER(name, fn_type) macro works correctly
  * when used in C++ code. This ensures C++ projects can create
  * their own IFUNC resolvers using the library's helpers.
+ *
+ * IFUNC symbols defined in C++ are not linkable on aarch64 (Clang 17), so this
+ * test is skipped on that platform; see test_resolver_macro.c for aarch64 coverage.
  */
 
 #include <gtest/gtest.h>
 #include <dynemit/core.h>
 #include <dynemit/err.h>
+
+#if !defined(__aarch64__)
 
 static void test_func_scalar(float* out, const float* a, const float* b, size_t n)
 {
@@ -99,3 +104,11 @@ TEST(CppResolverMacro, DispatchesCorrectImpl) {
             << " (SIMD level: " << simd_level_name(level) << ")";
     }
 }
+
+#else
+
+TEST(CppResolverMacro, DispatchesCorrectImpl) {
+    GTEST_SKIP() << "C++ IFUNC symbols are unsupported on aarch64";
+}
+
+#endif

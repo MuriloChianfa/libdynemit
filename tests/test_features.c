@@ -44,7 +44,8 @@ void test_features_first_is_core(void)
 void test_simd_detection(void)
 {
     simd_level_t level = detect_simd_level();
-    TEST_ASSERT_TRUE(level >= SIMD_SCALAR && level <= SIMD_AVX512_VBMI2);
+    simd_level_t max_level = DYNEMIT_SIMD_LEVELS[DYNEMIT_N_LEVELS - 1];
+    TEST_ASSERT_TRUE(level >= SIMD_SCALAR && level <= max_level);
     const char *name = simd_level_name(level);
     TEST_ASSERT_NOT_NULL(name);
 }
