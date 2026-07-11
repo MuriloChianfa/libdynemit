@@ -351,6 +351,7 @@ void test_radixs_vbmi2_select_total(void)
     TEST_ASSERT_NOT_NULL(radixs_u64_select(SIMD_AVX512_VBMI2));
 }
 
+#if defined(__x86_64__) || defined(__i386__)
 static void
 run_avx512_conflict_u32(radixs_u32_fn_t fn)
 {
@@ -380,6 +381,7 @@ run_avx512_conflict_u64(radixs_u64_fn_t fn)
     fn(in, out, 8);
     TEST_ASSERT_EQUAL_UINT64_ARRAY(ref, out, 8);
 }
+#endif
 
 void test_radixs_avx512_conflict(void)
 {

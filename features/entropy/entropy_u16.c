@@ -126,6 +126,7 @@ eu16_get_bufs(uint32_t **hist, uint16_t **dirty)
 }
 #endif
 
+#if defined(__x86_64__) || defined(__i386__)
 static inline void
 eu16_cleanup(uint32_t *hist, const uint16_t *dirty,
              size_t ndirty, int tracked)
@@ -142,6 +143,7 @@ eu16_cleanup(uint32_t *hist, const uint16_t *dirty,
         }
     }
 }
+#endif
 
 
 #if defined(__x86_64__) || defined(__i386__)
