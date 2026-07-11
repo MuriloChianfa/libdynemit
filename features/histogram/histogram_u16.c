@@ -24,7 +24,7 @@
  */
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static void
@@ -222,7 +222,16 @@ EXPLICIT_RUNTIME_RESOLVER(histogram_u16_resolver, histogram_u16_fn_t)
 {
     return histogram_u16_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(histogram_u16_fn_t, histogram_u16, histogram_u16_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+void histogram_u16(const uint16_t *data, size_t n,
+                         const uint16_t *boundaries, size_t num_boundaries,
+                         uint64_t *out)
+{
+    DYNEMIT_IFUNC_INVOKE(histogram_u16, (data, n, boundaries, num_boundaries, out));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
@@ -231,4 +240,5 @@ __attribute__((target("+sve2,+sve")))
 void histogram_u16(const uint16_t *data, size_t n,
                          const uint16_t *boundaries, size_t num_boundaries,
                          uint64_t *out)
-    __attribute__((ifunc("histogram_u16_resolver")));
+    DYNEMIT_IFUNC_ATTR("histogram_u16_resolver");
+#endif

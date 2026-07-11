@@ -16,7 +16,7 @@
  */
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static void
@@ -173,7 +173,17 @@ EXPLICIT_RUNTIME_RESOLVER(topk_ratios_f64_resolver, topk_ratios_f64_fn_t)
 {
     return topk_ratios_f64_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(topk_ratios_f64_fn_t, topk_ratios_f64, topk_ratios_f64_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+void topk_ratios_f64(const uint64_t *sorted_desc, size_t n,
+                     uint64_t total,
+                     const size_t *k_values, size_t num_k,
+                     double *out_ratios)
+{
+    DYNEMIT_IFUNC_INVOKE(topk_ratios_f64, (sorted_desc, n, total, k_values, num_k, out_ratios));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
@@ -183,4 +193,5 @@ void topk_ratios_f64(const uint64_t *sorted_desc, size_t n,
                      uint64_t total,
                      const size_t *k_values, size_t num_k,
                      double *out_ratios)
-    __attribute__((ifunc("topk_ratios_f64_resolver")));
+    DYNEMIT_IFUNC_ATTR("topk_ratios_f64_resolver");
+#endif

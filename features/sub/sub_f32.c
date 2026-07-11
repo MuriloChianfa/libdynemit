@@ -10,7 +10,7 @@
 #include <stddef.h>
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static void
@@ -193,11 +193,19 @@ EXPLICIT_RUNTIME_RESOLVER(sub_f32_resolver, sub_f32_fn_t)
 {
     return sub_f32_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(sub_f32_fn_t, sub_f32, sub_f32_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+void sub_f32(const float *a, const float *b, float *out, size_t n)
+{
+    DYNEMIT_IFUNC_INVOKE(sub_f32, (a, b, out, n));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 void sub_f32(const float *a, const float *b, float *out, size_t n)
-    __attribute__((ifunc("sub_f32_resolver")));
+    DYNEMIT_IFUNC_ATTR("sub_f32_resolver");
+#endif

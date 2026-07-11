@@ -21,7 +21,7 @@ cmp_u32(const void *a, const void *b)
 }
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
@@ -255,11 +255,19 @@ EXPLICIT_RUNTIME_RESOLVER(simpson_u32_resolver, simpson_u32_fn_t)
 {
     return simpson_u32_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(simpson_u32_fn_t, simpson_u32, simpson_u32_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+double simpson_u32(const uint32_t *data, size_t n)
+{
+    return DYNEMIT_IFUNC_INVOKE(simpson_u32, (data, n));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double simpson_u32(const uint32_t *data, size_t n)
-    __attribute__((ifunc("simpson_u32_resolver")));
+    DYNEMIT_IFUNC_ATTR("simpson_u32_resolver");
+#endif

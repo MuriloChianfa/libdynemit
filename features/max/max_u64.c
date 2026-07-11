@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
@@ -159,11 +159,19 @@ EXPLICIT_RUNTIME_RESOLVER(max_u64_resolver, max_u64_fn_t)
 {
     return max_u64_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(max_u64_fn_t, max_u64, max_u64_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+double max_u64(const uint64_t *data, size_t n)
+{
+    return DYNEMIT_IFUNC_INVOKE(max_u64, (data, n));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double max_u64(const uint64_t *data, size_t n)
-    __attribute__((ifunc("max_u64_resolver")));
+    DYNEMIT_IFUNC_ATTR("max_u64_resolver");
+#endif

@@ -179,7 +179,7 @@ radixs_u32_run(const uint32_t *in, uint32_t *out, size_t n)
 }
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static void
@@ -598,11 +598,19 @@ EXPLICIT_RUNTIME_RESOLVER(radixs_u32_resolver, radixs_u32_fn_t)
 {
     return radixs_u32_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(radixs_u32_fn_t, radixs_u32, radixs_u32_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+void radixs_u32(const uint32_t *in, uint32_t *out, size_t n)
+{
+    DYNEMIT_IFUNC_INVOKE(radixs_u32, (in, out, n));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512vbmi2,avx512vbmi,avx512bw,avx512f,avx512cd,avx2,bmi2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 void radixs_u32(const uint32_t *in, uint32_t *out, size_t n)
-    __attribute__((ifunc("radixs_u32_resolver")));
+    DYNEMIT_IFUNC_ATTR("radixs_u32_resolver");
+#endif

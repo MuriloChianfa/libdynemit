@@ -1,0 +1,82 @@
+name: Sanitizers
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  sanitizers:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ASan+UBSan (x86_64)
+            runner: ubuntu-latest
+            arch: x86_64
+            sanitize: address,undefined
+          - name: ASan+UBSan (aarch64)
+            runner: ubuntu-24.04-arm
+            arch: aarch64
+            sanitize: address,undefined
+          - name: TSan (x86_64)
+            runner: ubuntu-latest
+            arch: x86_64
+            sanitize: thread
+          - name: TSan (aarch64)
+            runner: ubuntu-24.04-arm
+            arch: aarch64
+            sanitize: thread
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Add LLVM apt repository
+      run: |
+        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+        echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-18 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+
+    - name: Install Clang 18
+      run: |
+        sudo apt update
+        sudo apt install -y clang-18 lld-18
+
+    - name: Install CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.25.x'
+
+    - name: Verify Clang version
+      run: clang-18 --version
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_COMPILER=clang-18 \
+          -DCMAKE_CXX_COMPILER=clang++-18 \
+          -DDYNEMIT_TS=ON \
+          -DDYNEMIT_SANITIZE=${{ matrix.sanitize }}
+
+    - name: Build
+      run: cmake --build build -j$(nproc)
+
+    - name: Run tests
+      run: |
+        export ASAN_OPTIONS=detect_leaks=1:abort_on_error=1:halt_on_error=1
+        export UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1
+        export TSAN_OPTIONS=halt_on_error=1
+        ctest --test-dir build --output-on-failure
+
+    - name: Upload test logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sanitizer-${{ matrix.arch }}-${{ matrix.sanitize }}-logs
+        path: build/Testing/
+        retention-days: 14
+        if-no-files-found: warn

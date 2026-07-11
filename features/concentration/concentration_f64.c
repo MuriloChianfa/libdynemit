@@ -12,7 +12,7 @@
  */
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static void
@@ -138,7 +138,17 @@ EXPLICIT_RUNTIME_RESOLVER(concentration_f64_resolver, concentration_f64_fn_t)
 {
     return concentration_f64_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(concentration_f64_fn_t, concentration_f64, concentration_f64_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+void concentration_f64(const uint64_t *sorted_counts_desc, size_t n,
+                      uint64_t total,
+                      const size_t *k_values, size_t num_k,
+                      concentration_result_t *out)
+{
+    DYNEMIT_IFUNC_INVOKE(concentration_f64, (sorted_counts_desc, n, total, k_values, num_k, out));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
@@ -148,4 +158,5 @@ void concentration_f64(const uint64_t *sorted_counts_desc, size_t n,
                       uint64_t total,
                       const size_t *k_values, size_t num_k,
                       concentration_result_t *out)
-    __attribute__((ifunc("concentration_f64_resolver")));
+    DYNEMIT_IFUNC_ATTR("concentration_f64_resolver");
+#endif

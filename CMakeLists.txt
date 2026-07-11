@@ -50,6 +50,7 @@ endif()
 
 include(Coverage)
 include(Mull)
+include(Sanitizers)
 include(Unity)
 include(GTest)
 

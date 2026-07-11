@@ -6,7 +6,13 @@ void tearDown(void) {}
 
 static void verify_sub_f32(size_t n)
 {
-    float a[n], b[n], out[n];
+    if (n == 0) {
+        sub_f32(nullptr, nullptr, nullptr, 0);
+        return;
+    }
+    float a[n];
+    float b[n];
+    float out[n];
     for (size_t i = 0; i < n; i++) {
         a[i] = (float)i * 0.5f;
         b[i] = (float)(i + 1) * 0.25f;

@@ -51,6 +51,12 @@ add_test(NAME test_thread_safe_detection COMMAND test_thread_safe_detection)
 add_test(NAME test_resolver_macro COMMAND test_resolver_macro)
 
 # GTest auto-discovery
-gtest_discover_tests(test_cpp_basic)
-gtest_discover_tests(test_cpp_features)
-gtest_discover_tests(test_cpp_resolver_macro)
+if(DYNEMIT_SANITIZE)
+    set(_gtest_discovery_mode PRE_TEST)
+else()
+    set(_gtest_discovery_mode POST_BUILD)
+endif()
+
+gtest_discover_tests(test_cpp_basic DISCOVERY_MODE ${_gtest_discovery_mode})
+gtest_discover_tests(test_cpp_features DISCOVERY_MODE ${_gtest_discovery_mode})
+gtest_discover_tests(test_cpp_resolver_macro DISCOVERY_MODE ${_gtest_discovery_mode})

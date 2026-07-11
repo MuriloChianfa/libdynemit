@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
@@ -316,11 +316,19 @@ EXPLICIT_RUNTIME_RESOLVER(entropy_histogram_resolver, entropy_histogram_fn_t)
 {
     return entropy_histogram_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(entropy_histogram_fn_t, entropy_histogram, entropy_histogram_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+double entropy_histogram(const uint64_t *counts, size_t n)
+{
+    return DYNEMIT_IFUNC_INVOKE(entropy_histogram, (counts, n));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double entropy_histogram(const uint64_t *counts, size_t n)
-    __attribute__((ifunc("entropy_histogram_resolver")));
+    DYNEMIT_IFUNC_ATTR("entropy_histogram_resolver");
+#endif

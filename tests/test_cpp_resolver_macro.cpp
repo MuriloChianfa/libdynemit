@@ -10,6 +10,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <dynemit/compiler.h>
 #include <dynemit/core.h>
 #include <dynemit/err.h>
 
@@ -69,9 +70,17 @@ EXPLICIT_RUNTIME_RESOLVER(test_func_resolver, test_func_cpp_t)
         return test_func_scalar;
     }
 }
+DYNEMIT_IFUNC_SETUP(test_func_cpp_t, test_func_cpp, test_func_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
 void test_func_cpp(float* out, const float* a, const float* b, size_t n)
-    __attribute__((ifunc("test_func_resolver")));
+{
+    DYNEMIT_IFUNC_INVOKE(test_func_cpp, (out, a, b, n));
+}
+#else
+void test_func_cpp(float* out, const float* a, const float* b, size_t n)
+    DYNEMIT_IFUNC_ATTR("test_func_resolver");
+#endif
 }
 
 #pragma GCC diagnostic pop

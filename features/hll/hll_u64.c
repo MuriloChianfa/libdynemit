@@ -15,7 +15,7 @@
 #include "hll.h"
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
@@ -199,11 +199,19 @@ EXPLICIT_RUNTIME_RESOLVER(hll_u64_resolver, hll_u64_fn_t)
 {
     return hll_u64_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(hll_u64_fn_t, hll_u64, hll_u64_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+double hll_u64(const uint64_t *data, size_t n)
+{
+    return DYNEMIT_IFUNC_INVOKE(hll_u64, (data, n));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double hll_u64(const uint64_t *data, size_t n)
-    __attribute__((ifunc("hll_u64_resolver")));
+    DYNEMIT_IFUNC_ATTR("hll_u64_resolver");
+#endif

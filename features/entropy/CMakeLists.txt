@@ -7,12 +7,20 @@ add_library(entropy_obj OBJECT ${ENTROPY_SOURCES})
 target_include_directories(entropy_obj PRIVATE
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/features/log2)
-target_link_libraries(entropy_obj PUBLIC dynemit_core)
+if(DYNEMIT_TS)
+    target_link_libraries(entropy_obj PUBLIC dynemit_core Threads::Threads)
+else()
+    target_link_libraries(entropy_obj PUBLIC dynemit_core)
+endif()
 set_target_properties(entropy_obj PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 add_library(dynemit_entropy STATIC $<TARGET_OBJECTS:entropy_obj>)
 target_include_directories(dynemit_entropy PUBLIC ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(dynemit_entropy PUBLIC dynemit_core)
+if(DYNEMIT_TS)
+    target_link_libraries(dynemit_entropy PUBLIC dynemit_core Threads::Threads)
+else()
+    target_link_libraries(dynemit_entropy PUBLIC dynemit_core)
+endif()
 
 include(GNUInstallDirs)
 install(TARGETS dynemit_entropy ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

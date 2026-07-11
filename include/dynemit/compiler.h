@@ -54,4 +54,25 @@
 #  define DYNEMIT_PRAGMA_NO_VECTORIZE_END
 #endif
 
+/*
+ * IFUNC dispatch is incompatible with ASan/TSan/UBSan: resolvers run during
+ * ELF relocation before sanitizer runtimes initialize.  When DYNEMIT_NO_IFUNC
+ * is set (e.g. via DYNEMIT_SANITIZE builds), public APIs use constructor-time
+ * resolver calls instead of GNU ifunc.
+ */
+#if defined(DYNEMIT_NO_IFUNC)
+#  define DYNEMIT_IFUNC_SETUP(fn_t, api, resolver)                        \
+    static fn_t api##_dynemit_fn;                                           \
+    __attribute__((constructor))                                            \
+    static void api##_dynemit_init(void) { api##_dynemit_fn = resolver(); }
+#  define DYNEMIT_IFUNC_ATTR(resolver)
+#  define DYNEMIT_IFUNC_INVOKE(api, args) api##_dynemit_fn args
+#  define DYNEMIT_TARGET_DEFAULT
+#else
+#  define DYNEMIT_IFUNC_SETUP(fn_t, api, resolver)
+#  define DYNEMIT_IFUNC_ATTR(resolver) __attribute__((ifunc(resolver)))
+#  define DYNEMIT_IFUNC_INVOKE(api, args)
+#  define DYNEMIT_TARGET_DEFAULT __attribute__((target("default")))
+#endif
+
 #endif /* DYNEMIT_COMPILER_H */

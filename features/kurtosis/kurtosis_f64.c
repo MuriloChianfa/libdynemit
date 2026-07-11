@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
@@ -272,11 +272,19 @@ EXPLICIT_RUNTIME_RESOLVER(kurtosis_f64_resolver, kurtosis_f64_fn_t)
 {
     return kurtosis_f64_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(kurtosis_f64_fn_t, kurtosis_f64, kurtosis_f64_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+double kurtosis_f64(const double *data, size_t n)
+{
+    return DYNEMIT_IFUNC_INVOKE(kurtosis_f64, (data, n));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double kurtosis_f64(const double *data, size_t n)
-    __attribute__((ifunc("kurtosis_f64_resolver")));
+    DYNEMIT_IFUNC_ATTR("kurtosis_f64_resolver");
+#endif

@@ -13,7 +13,7 @@
 #include <string.h>
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
@@ -209,11 +209,19 @@ EXPLICIT_RUNTIME_RESOLVER(hhi_histogram_resolver, hhi_histogram_fn_t)
 {
     return hhi_histogram_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(hhi_histogram_fn_t, hhi_histogram, hhi_histogram_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+double hhi_histogram(const uint64_t *counts, size_t n)
+{
+    return DYNEMIT_IFUNC_INVOKE(hhi_histogram, (counts, n));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double hhi_histogram(const uint64_t *counts, size_t n)
-    __attribute__((ifunc("hhi_histogram_resolver")));
+    DYNEMIT_IFUNC_ATTR("hhi_histogram_resolver");
+#endif

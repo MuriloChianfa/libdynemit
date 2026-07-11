@@ -145,7 +145,7 @@ eu16_cleanup(uint32_t *hist, const uint16_t *dirty,
 
 
 #if defined(__x86_64__) || defined(__i386__)
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 #endif
 DYNEMIT_NO_AUTOVECTORIZE
 static double
@@ -652,11 +652,19 @@ EXPLICIT_RUNTIME_RESOLVER(entropy_u16_resolver, entropy_u16_fn_t)
 {
     return entropy_u16_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(entropy_u16_fn_t, entropy_u16, entropy_u16_resolver)
 
+#if defined(DYNEMIT_NO_IFUNC)
+double entropy_u16(const uint16_t *data, size_t n)
+{
+    return DYNEMIT_IFUNC_INVOKE(entropy_u16, (data, n));
+}
+#else
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
 #elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double entropy_u16(const uint16_t *data, size_t n)
-    __attribute__((ifunc("entropy_u16_resolver")));
+    DYNEMIT_IFUNC_ATTR("entropy_u16_resolver");
+#endif
