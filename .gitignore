@@ -66,3 +66,4 @@ Makefile
 compile_commands.json
 .cache/
 *.tar.gz
+reports/

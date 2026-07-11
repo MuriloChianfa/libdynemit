@@ -1,7 +1,15 @@
 #include "unity.h"
 #include <math.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <dynemit/log2.h>
+
+/*
+ * ISO C11 aligned_alloc() requires size to be a multiple of alignment.
+ * Round up to the next multiple of 64 bytes.
+ */
+#define LOG2_ALIGNED_BYTES(n) \
+    ((((size_t)(n) * sizeof(double)) + (size_t)63) & ~(size_t)63)
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -58,8 +66,8 @@ static void run_variant_sizes(log2_f64_fn_t fn)
             TEST_ASSERT_EQUAL_DOUBLE(-999.0, out);
             continue;
         }
-        double *in  = aligned_alloc(64, n * sizeof(double));
-        double *out = aligned_alloc(64, n * sizeof(double));
+        double *in  = aligned_alloc(64, LOG2_ALIGNED_BYTES(n));
+        double *out = aligned_alloc(64, LOG2_ALIGNED_BYTES(n));
         TEST_ASSERT_NOT_NULL(in);
         TEST_ASSERT_NOT_NULL(out);
 
@@ -95,9 +103,9 @@ void test_log2_f64_select_all_levels(void)
 void test_log2_f64_precision_all_variants(void)
 {
     static const size_t N = 1024;
-    double *in  = aligned_alloc(64, N * sizeof(double));
-    double *out = aligned_alloc(64, N * sizeof(double));
-    double *ref = aligned_alloc(64, N * sizeof(double));
+    double *in  = aligned_alloc(64, LOG2_ALIGNED_BYTES(N));
+    double *out = aligned_alloc(64, LOG2_ALIGNED_BYTES(N));
+    double *ref = aligned_alloc(64, LOG2_ALIGNED_BYTES(N));
     TEST_ASSERT_NOT_NULL(in);
     TEST_ASSERT_NOT_NULL(out);
     TEST_ASSERT_NOT_NULL(ref);
