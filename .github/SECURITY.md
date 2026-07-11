@@ -100,7 +100,7 @@ The library follows these security practices:
 2. **Bounds checking**: Loop implementations check array bounds
 3. **No dynamic memory allocation**: The library is allocation-free
 4. **Const-correctness**: Input pointers are marked const where appropriate
-5. **Compiler warnings**: Built with `-Wall -Wextra` to catch potential issues
+5. **Compiler warnings**: Built with `-Wall -Wextra -Wconversion -Werror` to catch potential issues
 
 ### Hardening Recommendations
 

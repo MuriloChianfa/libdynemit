@@ -58,9 +58,10 @@ void test_memcpys_success(void)
 
 void test_memcpys_zero_count(void)
 {
-    uint8_t buf[4] = {0xAA, 0xAA, 0xAA, 0xAA};
-    TEST_ASSERT_EQUAL_INT(0, memcpys(buf, sizeof(buf), buf, 0));
-    TEST_ASSERT_EQUAL_UINT8(0xAA, buf[0]);
+    uint8_t dst[4] = {0xAA, 0xAA, 0xAA, 0xAA};
+    const uint8_t src[4] = {0xBB, 0xBB, 0xBB, 0xBB};
+    TEST_ASSERT_EQUAL_INT(0, memcpys(dst, sizeof(dst), src, 0));
+    TEST_ASSERT_EQUAL_UINT8(0xAA, dst[0]);
 }
 
 void test_memcpys_null_dest(void)

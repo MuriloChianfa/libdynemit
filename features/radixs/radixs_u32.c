@@ -356,9 +356,13 @@ radixs_u32_pass_avx512f(const uint32_t *src, uint32_t *dst, size_t n,
 
     for (; i + 16 <= n; i += 16) {
         __m512i v = _mm512_loadu_si512((const void *)(src + i));
+        /* GCC AVX-512 wrappers cast unsigned imm/mask args through signed types. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
         __m512i b = (shift == 0)
                     ? _mm512_and_si512(v, mask)
                     : _mm512_and_si512(_mm512_srli_epi32(v, shift), mask);
+#pragma GCC diagnostic pop
         __m512i conflict = _mm512_conflict_epi32(b);
         __mmask16 unique = _mm512_cmpeq_epi32_mask(conflict, _mm512_setzero_si512());
 
@@ -369,7 +373,10 @@ radixs_u32_pass_avx512f(const uint32_t *src, uint32_t *dst, size_t n,
                 (int)hist[buf_b[11]], (int)hist[buf_b[10]], (int)hist[buf_b[ 9]], (int)hist[buf_b[ 8]],
                 (int)hist[buf_b[ 7]], (int)hist[buf_b[ 6]], (int)hist[buf_b[ 5]], (int)hist[buf_b[ 4]],
                 (int)hist[buf_b[ 3]], (int)hist[buf_b[ 2]], (int)hist[buf_b[ 1]], (int)hist[buf_b[ 0]]);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
             _mm512_i32scatter_epi32(dst, offsets, v, 4);
+#pragma GCC diagnostic pop
             for (int j = 0; j < 16; j++) {
                 hist[buf_b[j]]++;
             }
@@ -477,7 +484,10 @@ radixs_u32_pass_vbmi2(const uint32_t *src, uint32_t *dst, size_t n,
                 (int)hist[buf_b[11]], (int)hist[buf_b[10]], (int)hist[buf_b[ 9]], (int)hist[buf_b[ 8]],
                 (int)hist[buf_b[ 7]], (int)hist[buf_b[ 6]], (int)hist[buf_b[ 5]], (int)hist[buf_b[ 4]],
                 (int)hist[buf_b[ 3]], (int)hist[buf_b[ 2]], (int)hist[buf_b[ 1]], (int)hist[buf_b[ 0]]);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
             _mm512_i32scatter_epi32(dst, offsets, v, 4);
+#pragma GCC diagnostic pop
             for (int j = 0; j < 16; j++) {
                 hist[buf_b[j]]++;
             }

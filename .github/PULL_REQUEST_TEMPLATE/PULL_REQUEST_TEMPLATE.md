@@ -105,7 +105,7 @@ Closes #
 ## Static Analysis
 
 - [ ] Tested with cppcheck (no new warnings)
-- [ ] Tested with compiler warnings enabled (`-Wall -Wextra`)
+- [ ] Tested with compiler warnings enabled (`-Wall -Wextra -Wconversion -Werror`)
 - [ ] Tested with sanitizers (ASan/UBSan) if applicable
 - [ ] Not applicable
 

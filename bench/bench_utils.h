@@ -419,7 +419,7 @@ bench_parse_opts(int argc, char **argv, bench_opts_t *opts,
 /* ---- Auto-detect file output ---- */
 
 static int   bench_stdout_saved = -1;
-static char  bench_auto_filename[512];
+static char  bench_auto_filename[1024];
 
 static int
 bench_auto_detect_open(const char *feature, simd_level_t lvl)
