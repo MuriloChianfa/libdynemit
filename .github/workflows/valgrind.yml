@@ -1,0 +1,96 @@
+name: Valgrind
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Build (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake gcc g++ valgrind
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DDYNEMIT_TS=ON
+
+    - name: Build
+      run: cmake --build build -j$(nproc)
+
+    - name: Upload feature test binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: valgrind-build-${{ matrix.arch }}
+        path: build/features/*/test_*
+        retention-days: 5
+        if-no-files-found: error
+
+  valgrind:
+    name: Valgrind ${{ matrix.tool }} (${{ matrix.arch }})
+    needs: build
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
+        tool: [memcheck, helgrind, drd, massif, cachegrind, dhat]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Valgrind
+      run: |
+        sudo apt update
+        sudo apt install -y valgrind
+
+    - name: Download feature test binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: valgrind-build-${{ matrix.arch }}
+        path: .
+
+    - name: Restore executable bits
+      run: |
+        find build/features -type f -name 'test_*' -exec chmod +x {} +
+        echo "Discovered feature tests:"
+        find build/features -type f -name 'test_*' | sort
+
+    - name: Run Valgrind (${{ matrix.tool }})
+      continue-on-error: ${{ contains(fromJSON('["massif","cachegrind","dhat"]'), matrix.tool) }}
+      run: |
+        chmod +x scripts/run_valgrind.sh
+        scripts/run_valgrind.sh \
+          --build-dir build \
+          --tool ${{ matrix.tool }} \
+          --parallel 4 \
+          --output-dir reports
+
+    - name: Upload Valgrind reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: valgrind-${{ matrix.arch }}-${{ matrix.tool }}
+        path: reports/
+        retention-days: 30
+        if-no-files-found: warn

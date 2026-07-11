@@ -44,6 +44,24 @@ Run a single feature test directly:
 ./build/features/sum/test_sum
 ```
 
+## Valgrind
+
+Memory and thread checking for feature tests. Build Debug with TLS enabled so
+thread-local scratch paths in `hll` / `entropy` are exercised:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_TS=ON
+cmake --build build -j$(nproc)
+```
+
+Run a single Valgrind tool over all `features/*/test_*` binaries:
+
+```bash
+./scripts/run_valgrind.sh --build-dir build-valgrind --tool memcheck
+./scripts/run_valgrind.sh --build-dir build-valgrind --tool helgrind --parallel 4
+./scripts/run_valgrind.sh --build-dir build-valgrind --tool massif --output-dir reports
+```
+
 ## Code Coverage (lcov)
 
 Generate an HTML coverage report over all tests:
