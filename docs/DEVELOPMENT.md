@@ -97,30 +97,39 @@ This check also runs in CI (see the `clang-tidy-performance` job in `.github/wor
 ## Mutation Testing (Mull)
 
 Mull injects mutations into compiled bitcode to verify test quality. It requires
-Clang and the `mull` package.
+Clang and a matching Mull package (LLVM major must match Clang).
+
+Install from [GitHub Releases](https://github.com/mull-project/mull/releases)
+(preferred — the Cloudsmith apt mirror is often unreachable):
 
 ```bash
-curl -1sLf 'https://dl.cloudsmith.io/public/mull-project/mull-stable/setup.deb.sh' | sudo -E bash
-sudo apt-get install mull-20
+# Example: Mull 18 for Ubuntu 24.04 amd64 (match your Clang major)
+MULL_VERSION=0.34.0
+MULL_DEB="Mull-18-${MULL_VERSION}-LLVM-18.1.3-ubuntu-amd64-24.04.deb"
+curl -fsSL -o "/tmp/${MULL_DEB}" \
+  "https://github.com/mull-project/mull/releases/download/${MULL_VERSION}/${MULL_DEB}"
+sudo apt-get install -y "/tmp/${MULL_DEB}"
 ```
 
 Build with the Mull pass plugin enabled:
 
 ```bash
-cmake -B build-mull -DCMAKE_C_COMPILER=clang -DDYNEMIT_MULL=ON
+cmake -B build-mull -DCMAKE_C_COMPILER=clang-18 -DDYNEMIT_MULL=ON
 cmake --build build-mull -j$(nproc)
 ```
 
 Run mutation testing on individual test binaries:
 
 ```bash
-mull-runner-20 ./build-mull/features/add/test_add
-mull-runner-20 ./build-mull/features/sum/test_sum
+mull-runner-18 ./build-mull/features/add/test_add
+mull-runner-18 ./build-mull/features/sum/test_sum
 ```
 
 The `mull.yml` config at the project root controls which mutators are active.
 Mull primarily tests scalar implementations; SIMD stub functions that delegate
 to the scalar path produce trivial mutants that can be ignored in the report.
+
+CI installs Mull the same way (see `.github/workflows/mutation.yml`).
 
 ## Build Types
 
