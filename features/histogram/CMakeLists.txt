@@ -16,9 +16,13 @@ install(TARGETS dynemit_histogram ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/histogram.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
 # Tests
-add_executable(test_histogram tests/test_histogram.c)
-target_include_directories(test_histogram PRIVATE ${PROJECT_SOURCE_DIR}/include)
+add_executable(test_histogram tests/test_histogram.c ${PROJECT_SOURCE_DIR}/tests/fault_alloc.c)
+target_include_directories(test_histogram PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/tests)
 target_link_libraries(test_histogram PRIVATE dynemit_histogram dynemit_core unity m)
+target_link_options(test_histogram PRIVATE
+    -Wl,--wrap=aligned_alloc -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc)
 add_test(NAME test_histogram COMMAND test_histogram)
 
 # Benchmarks

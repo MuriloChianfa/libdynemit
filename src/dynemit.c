@@ -2,6 +2,7 @@
 #include <dynemit/core.h>
 #include <stddef.h>
 #include <stdatomic.h>
+#include <stdlib.h>
 
 #if defined(__aarch64__)
 #include <sys/auxv.h>
@@ -14,41 +15,22 @@
 #endif
 #endif
 
-void
-cpuid_x86(uint32_t leaf, uint32_t subleaf,
-          uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
+static simd_level_t
+clamp_simd_level(simd_level_t level)
 {
-#if defined(__x86_64__) || defined(__i386__)
-    uint32_t a, b, c, d;
-    __asm__ volatile("cpuid"
-                     : "=a"(a), "=b"(b), "=c"(c), "=d"(d)
-                     : "a"(leaf), "c"(subleaf));
-    if (eax) *eax = a;
-    if (ebx) *ebx = b;
-    if (ecx) *ecx = c;
-    if (edx) *edx = d;
-#else
-    (void)leaf; (void)subleaf;
-    if (eax) *eax = 0;
-    if (ebx) *ebx = 0;
-    if (ecx) *ecx = 0;
-    if (edx) *edx = 0;
-#endif
-}
-
-uint64_t
-xgetbv_x86(uint32_t xcr)
-{
-#if defined(__x86_64__) || defined(__i386__)
-    uint32_t eax, edx;
-    __asm__ volatile (".byte 0x0f, 0x01, 0xd0"
-                      : "=a"(eax), "=d"(edx)
-                      : "c"(xcr));
-    return ((uint64_t)edx << 32) | eax;
-#else
-    (void)xcr;
-    return 0;
-#endif
+    const char *cap = getenv("DYNEMIT_MAX_SIMD_LEVEL");
+    if (cap == NULL || *cap == '\0') {
+        return level;
+    }
+    char *end = NULL;
+    unsigned long capped = strtoul(cap, &end, 10);
+    if (end == cap) {
+        return level;
+    }
+    if (capped < (unsigned long)level) {
+        return (simd_level_t)capped;
+    }
+    return level;
 }
 
 simd_level_t
@@ -58,12 +40,12 @@ detect_simd_level(void)
     unsigned long hwcap  = getauxval(AT_HWCAP);
     unsigned long hwcap2 = getauxval(AT_HWCAP2);
     if ((hwcap & HWCAP_SVE) && (hwcap2 & HWCAP2_SVE2))
-        return SIMD_SVE2;
+        return clamp_simd_level(SIMD_SVE2);
     if (hwcap & HWCAP_SVE)
-        return SIMD_SVE;
+        return clamp_simd_level(SIMD_SVE);
     if (hwcap & HWCAP_ASIMD)
-        return SIMD_NEON;
-    return SIMD_SCALAR;
+        return clamp_simd_level(SIMD_NEON);
+    return clamp_simd_level(SIMD_SCALAR);
 #elif defined(__x86_64__) || defined(__i386__)
     uint32_t eax, ebx, ecx, edx;
     cpuid_x86(0, 0, &eax, &ebx, &ecx, &edx);
@@ -91,15 +73,15 @@ detect_simd_level(void)
     int ymm_ok = osxsave && ((xcr0 & 0x6) == 0x6);
     int zmm_ok = osxsave && ((xcr0 & 0xE0) == 0xE0);
 
-    if (avx && avx512f && avx512vbmi && avx512vbmi2 && zmm_ok) return SIMD_AVX512_VBMI2;
-    if (avx && avx512f && zmm_ok) return SIMD_AVX512F;
-    if (avx && avx2 && ymm_ok) return SIMD_AVX2;
-    if (avx && ymm_ok) return SIMD_AVX;
-    if (sse42) return SIMD_SSE4_2;
-    if (sse2) return SIMD_SSE2;
-    return SIMD_SCALAR;
+    if (avx && avx512f && avx512vbmi && avx512vbmi2 && zmm_ok) return clamp_simd_level(SIMD_AVX512_VBMI2);
+    if (avx && avx512f && zmm_ok) return clamp_simd_level(SIMD_AVX512F);
+    if (avx && avx2 && ymm_ok) return clamp_simd_level(SIMD_AVX2);
+    if (avx && ymm_ok) return clamp_simd_level(SIMD_AVX);
+    if (sse42) return clamp_simd_level(SIMD_SSE4_2);
+    if (sse2) return clamp_simd_level(SIMD_SSE2);
+    return clamp_simd_level(SIMD_SCALAR);
 #else
-    return SIMD_SCALAR;
+    return clamp_simd_level(SIMD_SCALAR);
 #endif
 }
 

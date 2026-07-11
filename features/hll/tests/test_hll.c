@@ -1,11 +1,15 @@
 #include "unity.h"
+#include "fault_alloc.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <dynemit/hll.h>
 
 void setUp(void) {}
-void tearDown(void) {}
+void tearDown(void)
+{
+    fault_alloc_reset();
+}
 
 /* ---- Basic edge cases ---- */
 
@@ -256,9 +260,22 @@ void test_hll_u64_all_variants(void)
     }
 }
 
+void test_hll_regs_alloc_fail(void)
+{
+    uint32_t d[] = {1, 2, 3, 4, 5};
+    fault_alloc_fail_next_aligned_alloc();
+    TEST_ASSERT_DOUBLE_WITHIN(1e-9, 0.0, hll_u32_select(SIMD_SCALAR)(d, 5));
+
+    uint64_t d64[] = {1, 2, 3, 4, 5};
+    fault_alloc_fail_next_aligned_alloc();
+    TEST_ASSERT_DOUBLE_WITHIN(1e-9, 0.0, hll_u64_select(SIMD_SCALAR)(d64, 5));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+
+    RUN_TEST(test_hll_regs_alloc_fail);
 
     RUN_TEST(test_hll_u32_empty);
     RUN_TEST(test_hll_u64_empty);

@@ -40,10 +40,15 @@ install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/simpson.h
 )
 
 # Tests
-add_executable(test_simpson tests/test_simpson.c)
-target_include_directories(test_simpson PRIVATE ${PROJECT_SOURCE_DIR}/include)
+add_executable(test_simpson tests/test_simpson.c ${PROJECT_SOURCE_DIR}/tests/fault_alloc.c)
+target_include_directories(test_simpson PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/tests)
 target_link_libraries(test_simpson PRIVATE dynemit_simpson dynemit_core unity m)
+target_link_options(test_simpson PRIVATE
+    -Wl,--wrap=aligned_alloc -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc)
 add_test(NAME test_simpson COMMAND test_simpson)
+set_tests_properties(test_simpson PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # Benchmarks
 add_executable(bench_simpson_u16 benchmarks/bench_simpson_u16.c)

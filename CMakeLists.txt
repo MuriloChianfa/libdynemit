@@ -53,7 +53,11 @@ include(Coverage)
 include(Mull)
 include(Sanitizers)
 include(Unity)
-include(GTest)
+
+option(DYNEMIT_ENABLE_GTEST "Build Google Test C++ compatibility tests" ON)
+if(DYNEMIT_ENABLE_GTEST)
+    include(GTest)
+endif()
 
 # Add subdirectories for core and features
 add_subdirectory(src)

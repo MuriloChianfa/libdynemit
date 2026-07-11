@@ -4,6 +4,7 @@
 # Object library for bundling into all-in-one library
 add_library(dynemit_core_obj OBJECT 
     dynemit.c
+    cpuid_x86.c
 )
 
 target_include_directories(dynemit_core_obj 

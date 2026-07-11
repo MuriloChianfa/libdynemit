@@ -59,6 +59,11 @@ void test_simd_level_name_all_values(void)
     TEST_ASSERT_EQUAL_STRING("AVX2",         simd_level_name(SIMD_AVX2));
     TEST_ASSERT_EQUAL_STRING("AVX-512F",     simd_level_name(SIMD_AVX512F));
     TEST_ASSERT_EQUAL_STRING("AVX-512VBMI2", simd_level_name(SIMD_AVX512_VBMI2));
+#if defined(__aarch64__)
+    TEST_ASSERT_EQUAL_STRING("NEON", simd_level_name(SIMD_NEON));
+    TEST_ASSERT_EQUAL_STRING("SVE",  simd_level_name(SIMD_SVE));
+    TEST_ASSERT_EQUAL_STRING("SVE2", simd_level_name(SIMD_SVE2));
+#endif
 }
 
 void test_simd_level_name_unknown(void)

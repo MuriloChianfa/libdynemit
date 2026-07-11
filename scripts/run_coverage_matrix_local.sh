@@ -26,6 +26,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+HOST_ARCH="$(uname -m)"
+AARCH64_ON_X86=0
+if [[ "$HOST_ARCH" != "aarch64" && "$HOST_ARCH" != "arm64" ]]; then
+    AARCH64_ON_X86=1
+fi
+
 summarize_coverage() {
     local info="$1"
     local label="$2"
@@ -91,50 +97,72 @@ else
     echo "========== x86-sde SKIPPED (--skip-sde) =========="
 fi
 
-# --- aarch64 via Docker ---
+# --- aarch64 via Docker (cached toolchain image, single container for both legs) ---
 if [[ "$SKIP_AARCH64" -eq 0 ]] && docker info >/dev/null 2>&1; then
-    if ! docker run --rm --platform linux/arm64 ubuntu:24.04 uname -m >/dev/null 2>&1; then
+    AARCH64_IMAGE="$("$ROOT/scripts/ensure_docker_coverage_aarch64.sh")"
+
+    if ! docker run --rm --platform linux/arm64 "$AARCH64_IMAGE" uname -m >/dev/null 2>&1; then
         echo "Registering QEMU binfmt for linux/arm64 Docker..."
         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes >/dev/null
     fi
 
     echo ""
-    echo "========== aarch64-native (Docker arm64) =========="
+    echo "========== aarch64-native + aarch64-sve (Docker $AARCH64_IMAGE) =========="
+    AARCH64_CMAKE_EXTRA=(-DDYNEMIT_ENABLE_GTEST=OFF)
     docker run --rm --platform linux/arm64 \
-        -u "$(id -u):$(id -g)" \
+        --ulimit stack=67108864:67108864 \
+        -e AARCH64_ON_X86="$AARCH64_ON_X86" \
         -v "$ROOT:/work" -w /work \
-        ubuntu:24.04 bash -euxo pipefail -c '
-            apt-get update -qq
-            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq cmake lcov gcc g++ make git
-            cmake -B build-cov-aarch64-native -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON
-            cmake --build build-cov-aarch64-native -j"$(nproc)"
+        "$AARCH64_IMAGE" bash -euxo pipefail -c '
+            uid='"$(id -u)"'
+            gid='"$(id -g)"'
+            if [[ "$AARCH64_ON_X86" == 1 ]]; then
+                export DYNEMIT_MAX_SIMD_LEVEL=10
+            fi
+            for d in build-cov-aarch64-native build-cov-aarch64-sve; do
+                chown -R "$uid:$gid" "/work/$d" 2>/dev/null || true
+                rm -rf "$d"
+            done
+
+            cmake -B build-cov-aarch64-native -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON '"${AARCH64_CMAKE_EXTRA[*]}"'
+            for attempt in 1 2 3 4 5; do
+                cmake --build build-cov-aarch64-native -j1 && break
+                echo "aarch64-native build attempt ${attempt} failed; retrying..." >&2
+                [[ "$attempt" -eq 5 ]] && exit 1
+            done
             ./build-cov-aarch64-native/dynemit_simd_level_probe 0
             cmake --build build-cov-aarch64-native --target coverage
-        '
-    summarize_coverage "build-cov-aarch64-native/coverage.info" "aarch64-native"
 
-    echo ""
-    echo "========== aarch64-sve (Docker arm64 + QEMU if needed) =========="
-    docker run --rm --platform linux/arm64 \
-        -u "$(id -u):$(id -g)" \
-        -v "$ROOT:/work" -w /work \
-        ubuntu:24.04 bash -euxo pipefail -c '
-            apt-get update -qq
-            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq cmake lcov gcc g++ make git
-            cmake -B build-cov-aarch64-sve -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON
-            cmake --build build-cov-aarch64-sve -j"$(nproc)"
-            if ./build-cov-aarch64-sve/dynemit_simd_level_probe 12; then
-                echo "Host already SVE2+; reusing native coverage artifact."
+            if [[ "$AARCH64_ON_X86" == 1 ]]; then
+                echo "x86 host: SVE not runnable under binfmt; aarch64-sve leg reuses native NEON coverage."
+                mkdir -p build-cov-aarch64-sve
                 cp build-cov-aarch64-native/coverage.info build-cov-aarch64-sve/coverage.info
             else
-                DEBIAN_FRONTEND=noninteractive apt-get install -y -qq qemu-user
-                qemu-aarch64 -cpu max,sve=on,sve2=on -- ./build-cov-aarch64-sve/dynemit_simd_level_probe 11
-                cmake -B build-cov-aarch64-sve -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON \
-                    "-DDYNEMIT_COVERAGE_TEST_WRAPPER=qemu-aarch64 -cpu max,sve=on,sve2=on --"
-                cmake --build build-cov-aarch64-sve -j"$(nproc)"
-                cmake --build build-cov-aarch64-sve --target coverage
+                cmake -B build-cov-aarch64-sve -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON '"${AARCH64_CMAKE_EXTRA[*]}"'
+                for attempt in 1 2 3 4 5; do
+                    cmake --build build-cov-aarch64-sve -j1 && break
+                    echo "aarch64-sve build attempt ${attempt} failed; retrying..." >&2
+                    [[ "$attempt" -eq 5 ]] && exit 1
+                done
+                if ./build-cov-aarch64-sve/dynemit_simd_level_probe 12; then
+                    echo "Native aarch64 host reports SVE2+; reusing native coverage artifact."
+                    cp build-cov-aarch64-native/coverage.info build-cov-aarch64-sve/coverage.info
+                else
+                    qemu-aarch64 -cpu max,sve=on -- ./build-cov-aarch64-sve/dynemit_simd_level_probe 11
+                    cmake -B build-cov-aarch64-sve -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON '"${AARCH64_CMAKE_EXTRA[*]}"' \
+                        "-DDYNEMIT_COVERAGE_TEST_WRAPPER=qemu-aarch64 -cpu max,sve=on --"
+                    for attempt in 1 2 3 4 5; do
+                        cmake --build build-cov-aarch64-sve -j1 && break
+                        echo "aarch64-sve rebuild attempt ${attempt} failed; retrying..." >&2
+                        [[ "$attempt" -eq 5 ]] && exit 1
+                    done
+                    cmake --build build-cov-aarch64-sve --target coverage
+                fi
             fi
+
+            chown -R "$uid:$gid" /work/build-cov-aarch64-native /work/build-cov-aarch64-sve
         '
+    summarize_coverage "build-cov-aarch64-native/coverage.info" "aarch64-native"
     summarize_coverage "build-cov-aarch64-sve/coverage.info" "aarch64-sve"
 else
     echo ""

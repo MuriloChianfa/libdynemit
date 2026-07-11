@@ -1,10 +1,14 @@
 #include "unity.h"
+#include "fault_alloc.h"
 #include <stdint.h>
 #include <string.h>
 #include <dynemit/histogram.h>
 
 void setUp(void) {}
-void tearDown(void) {}
+void tearDown(void)
+{
+    fault_alloc_reset();
+}
 
 void test_histogram_u16_empty_data(void)
 {
@@ -130,6 +134,56 @@ void test_histogram_select_all_levels(void)
     }
 }
 
+void test_histogram_zero_boundaries_avx512(void)
+{
+#if defined(__x86_64__) || defined(__i386__)
+    uint64_t data[] = {10, 20, 30, 40, 50};
+    uint64_t out[1] = {0};
+    if (detect_simd_level() >= SIMD_AVX512F) {
+        histogram_u64_fn_t fn = histogram_u64_select(SIMD_AVX512F);
+        fn(data, 5, NULL, 0, out);
+    } else {
+        histogram_u64(data, 5, NULL, 0, out);
+    }
+    TEST_ASSERT_EQUAL_UINT64(5, out[0]);
+#else
+    TEST_PASS();
+#endif
+}
+
+void test_histogram_u16_zero_boundaries_avx512(void)
+{
+#if defined(__x86_64__) || defined(__i386__)
+    uint16_t data[] = {10, 20, 30, 40, 50};
+    uint64_t out[1] = {0};
+    if (detect_simd_level() >= SIMD_AVX512F) {
+        histogram_u16_fn_t fn = histogram_u16_select(SIMD_AVX512F);
+        fn(data, 5, NULL, 0, out);
+    } else {
+        histogram_u16(data, 5, NULL, 0, out);
+    }
+    TEST_ASSERT_EQUAL_UINT64(5, out[0]);
+#else
+    TEST_PASS();
+#endif
+}
+
+void test_histogram_u16_alloc_fail_fallback(void)
+{
+    uint16_t data[] = {10, 20, 30, 40, 50};
+    uint16_t bounds[] = {15, 25, 35};
+    uint64_t out[4] = {0};
+
+    histogram_u16_fn_t fn = histogram_u16_select(SIMD_AVX2);
+    if (detect_simd_level() < SIMD_AVX2) {
+        fn = histogram_u16_select(SIMD_SCALAR);
+    }
+
+    fault_alloc_fail_nth_aligned_alloc(1);
+    fn(data, 5, bounds, 3, out);
+    TEST_ASSERT_EQUAL_UINT64(5, out[0] + out[1] + out[2] + out[3]);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -145,6 +199,9 @@ int main(void)
 
     RUN_TEST(test_histogram_u16_all_variants);
     RUN_TEST(test_histogram_u64_all_variants);
+    RUN_TEST(test_histogram_zero_boundaries_avx512);
+    RUN_TEST(test_histogram_u16_zero_boundaries_avx512);
+    RUN_TEST(test_histogram_u16_alloc_fail_fallback);
 
     RUN_TEST(test_histogram_select_all_levels);
 

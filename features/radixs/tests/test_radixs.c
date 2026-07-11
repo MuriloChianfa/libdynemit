@@ -1,11 +1,15 @@
 #include "unity.h"
+#include "fault_alloc.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dynemit/radixs.h>
 
 void setUp(void) {}
-void tearDown(void) {}
+void tearDown(void)
+{
+    fault_alloc_reset();
+}
 
 /* ---- Reference comparators for qsort ---- */
 
@@ -278,6 +282,18 @@ static void run_variant_u64(radixs_u64_fn_t fn)
         for (size_t i = 0; i < n; i++)
             TEST_ASSERT_EQUAL_UINT64(UINT64_MAX, out[i]);
 
+        for (size_t i = 0; i < n; i++) in[i] = 0u;
+        memset(out, 0xa5, n * sizeof(uint64_t));
+        fn(in, out, n);
+        for (size_t i = 0; i < n; i++)
+            TEST_ASSERT_EQUAL_UINT64(0u, out[i]);
+
+        for (size_t i = 0; i < n; i++) in[i] = 0xdeadbeefcafebabeULL;
+        memset(out, 0xa5, n * sizeof(uint64_t));
+        fn(in, out, n);
+        for (size_t i = 0; i < n; i++)
+            TEST_ASSERT_EQUAL_UINT64(0xdeadbeefcafebabeULL, out[i]);
+
         free(in); free(out); free(ref);
     }
 }
@@ -335,6 +351,189 @@ void test_radixs_vbmi2_select_total(void)
     TEST_ASSERT_NOT_NULL(radixs_u64_select(SIMD_AVX512_VBMI2));
 }
 
+static void
+run_avx512_conflict_u32(radixs_u32_fn_t fn)
+{
+    uint32_t in[16];
+    uint32_t out[16];
+    uint32_t ref[16];
+    for (int i = 0; i < 16; i++) {
+        in[i] = (uint32_t)(i << 8);
+    }
+    memcpy(ref, in, sizeof(in));
+    qsort(ref, 16, sizeof(uint32_t), cmp_u32);
+    fn(in, out, 16);
+    TEST_ASSERT_EQUAL_UINT32_ARRAY(ref, out, 16);
+}
+
+static void
+run_avx512_conflict_u64(radixs_u64_fn_t fn)
+{
+    uint64_t in[8];
+    uint64_t out[8];
+    uint64_t ref[8];
+    for (int i = 0; i < 8; i++) {
+        in[i] = (uint64_t)(i << 8);
+    }
+    memcpy(ref, in, sizeof(in));
+    qsort(ref, 8, sizeof(uint64_t), cmp_u64);
+    fn(in, out, 8);
+    TEST_ASSERT_EQUAL_UINT64_ARRAY(ref, out, 8);
+}
+
+void test_radixs_avx512_conflict(void)
+{
+#if defined(__x86_64__) || defined(__i386__)
+    if (detect_simd_level() < SIMD_AVX512F) {
+        TEST_PASS();
+    }
+    run_avx512_conflict_u32(radixs_u32_select(SIMD_AVX512F));
+    run_avx512_conflict_u64(radixs_u64_select(SIMD_AVX512F));
+    if (detect_simd_level() >= SIMD_AVX512_VBMI2) {
+        run_avx512_conflict_u32(radixs_u32_select(SIMD_AVX512_VBMI2));
+        run_avx512_conflict_u64(radixs_u64_select(SIMD_AVX512_VBMI2));
+    }
+#else
+    TEST_PASS();
+#endif
+}
+
+static void
+verify_sorted_u32(const uint32_t *in, const uint32_t *out, size_t n)
+{
+    uint32_t *ref = malloc(n * sizeof(uint32_t));
+    TEST_ASSERT_NOT_NULL(ref);
+    memcpy(ref, in, n * sizeof(uint32_t));
+    qsort(ref, n, sizeof(uint32_t), cmp_u32);
+    TEST_ASSERT_EQUAL_UINT32_ARRAY(ref, out, n);
+    free(ref);
+}
+
+static void
+verify_sorted_u64(const uint64_t *in, const uint64_t *out, size_t n)
+{
+    uint64_t *ref = malloc(n * sizeof(uint64_t));
+    TEST_ASSERT_NOT_NULL(ref);
+    memcpy(ref, in, n * sizeof(uint64_t));
+    qsort(ref, n, sizeof(uint64_t), cmp_u64);
+    TEST_ASSERT_EQUAL_UINT64_ARRAY(ref, out, n);
+    free(ref);
+}
+
+void test_radixs_u32_alloc_fail_fallback(void)
+{
+    uint32_t in[] = {5, 3, 8, 1, 4, 7, 2, 6};
+    uint32_t out[8];
+    radixs_u32_fn_t fn = radixs_u32_select(SIMD_AVX2);
+    if (detect_simd_level() < SIMD_AVX2) {
+        fn = radixs_u32_select(SIMD_SCALAR);
+    }
+
+    fault_alloc_fail_nth_aligned_alloc(1);
+    fn(in, out, 8);
+    verify_sorted_u32(in, out, 8);
+
+    fault_alloc_fail_nth_aligned_alloc(2);
+    fn(in, out, 8);
+    verify_sorted_u32(in, out, 8);
+}
+
+void test_radixs_u64_alloc_fail_fallback(void)
+{
+    uint64_t in[] = {5, 3, 8, 1, 4, 7, 2, 6};
+    uint64_t out[8];
+    radixs_u64_fn_t fn = radixs_u64_select(SIMD_AVX2);
+    if (detect_simd_level() < SIMD_AVX2) {
+        fn = radixs_u64_select(SIMD_SCALAR);
+    }
+
+    fault_alloc_fail_nth_aligned_alloc(1);
+    fn(in, out, 8);
+    verify_sorted_u64(in, out, 8);
+
+    fault_alloc_fail_nth_aligned_alloc(2);
+    fn(in, out, 8);
+    verify_sorted_u64(in, out, 8);
+}
+
+void test_radixs_avx512_alloc_fail_fallback(void)
+{
+#if defined(__x86_64__) || defined(__i386__)
+    if (detect_simd_level() < SIMD_AVX512F) {
+        TEST_PASS();
+    }
+    uint32_t in32[] = {5, 3, 8, 1, 4, 7, 2, 6};
+    uint32_t out32[8];
+    uint64_t in64[] = {5, 3, 8, 1, 4, 7, 2, 6};
+    uint64_t out64[8];
+
+    radixs_u32_fn_t fn32 = radixs_u32_select(SIMD_AVX512F);
+    fault_alloc_fail_nth_aligned_alloc(1);
+    fn32(in32, out32, 8);
+    verify_sorted_u32(in32, out32, 8);
+
+    radixs_u64_fn_t fn64 = radixs_u64_select(SIMD_AVX512F);
+    fault_alloc_fail_nth_aligned_alloc(1);
+    fn64(in64, out64, 8);
+    verify_sorted_u64(in64, out64, 8);
+#else
+    TEST_PASS();
+#endif
+}
+
+static void
+verify_sorted_u16(const uint16_t *in, const uint16_t *out, size_t n)
+{
+    uint16_t *ref = malloc(n * sizeof(uint16_t));
+    TEST_ASSERT_NOT_NULL(ref);
+    memcpy(ref, in, n * sizeof(uint16_t));
+    qsort(ref, n, sizeof(uint16_t), cmp_u16);
+    TEST_ASSERT_EQUAL_UINT16_ARRAY(ref, out, n);
+    free(ref);
+}
+
+void test_radixs_u16_alloc_fail_fallback(void)
+{
+    uint16_t in[] = {5, 3, 8, 1, 4, 7, 2, 6};
+    uint16_t out[8];
+    radixs_u16_fn_t fn = radixs_u16_select(SIMD_AVX2);
+    if (detect_simd_level() < SIMD_AVX2) {
+        fn = radixs_u16_select(SIMD_SCALAR);
+    }
+
+    fault_alloc_fail_nth_aligned_alloc(1);
+    fn(in, out, 8);
+    verify_sorted_u16(in, out, 8);
+}
+
+void test_radixs_u16_large_dense(void)
+{
+    static const size_t N = 4096;
+    uint16_t *in = malloc(N * sizeof(uint16_t));
+    uint16_t *out = malloc(N * sizeof(uint16_t));
+    uint16_t *ref = malloc(N * sizeof(uint16_t));
+    TEST_ASSERT_NOT_NULL(in);
+    TEST_ASSERT_NOT_NULL(out);
+    TEST_ASSERT_NOT_NULL(ref);
+
+    for (size_t i = 0; i < N; i++) {
+        in[i] = (uint16_t)(i % 1024);
+    }
+    memcpy(ref, in, N * sizeof(uint16_t));
+    qsort(ref, N, sizeof(uint16_t), cmp_u16);
+
+    radixs_u16_fn_t fn = radixs_u16_select(SIMD_SCALAR);
+    if (detect_simd_level() >= SIMD_AVX2) {
+        fn = radixs_u16_select(SIMD_AVX2);
+    }
+    fn(in, out, N);
+    TEST_ASSERT_EQUAL_UINT16_ARRAY(ref, out, N);
+
+    free(in);
+    free(out);
+    free(ref);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -355,6 +554,13 @@ int main(void)
 
     RUN_TEST(test_radixs_select_all_levels);
     RUN_TEST(test_radixs_vbmi2_select_total);
+    RUN_TEST(test_radixs_avx512_conflict);
+
+    RUN_TEST(test_radixs_u32_alloc_fail_fallback);
+    RUN_TEST(test_radixs_u64_alloc_fail_fallback);
+    RUN_TEST(test_radixs_u16_alloc_fail_fallback);
+    RUN_TEST(test_radixs_avx512_alloc_fail_fallback);
+    RUN_TEST(test_radixs_u16_large_dense);
 
     return UNITY_END();
 }

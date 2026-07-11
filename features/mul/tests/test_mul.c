@@ -54,6 +54,38 @@ void test_mul_f32_select_all_levels(void)
     }
 }
 
+static void
+verify_mul_f32_variant(mul_f32_fn_t fn, size_t n)
+{
+    if (n == 0) {
+        fn(nullptr, nullptr, nullptr, 0);
+        return;
+    }
+    float a[n];
+    float b[n];
+    float out[n];
+    for (size_t i = 0; i < n; i++) {
+        a[i] = (float)i * 0.5f;
+        b[i] = (float)(i + 1) * 0.25f;
+    }
+    fn(a, b, out, n);
+    for (size_t i = 0; i < n; i++) {
+        TEST_ASSERT_FLOAT_WITHIN(1e-6f, a[i] * b[i], out[i]);
+    }
+}
+
+void test_mul_f32_tail_remainders(void)
+{
+    static const size_t sizes[] = {13, 19, 29, 33};
+    simd_level_t max_level = detect_simd_level();
+    for (int lvl = SIMD_SCALAR; lvl <= (int)max_level; lvl++) {
+        mul_f32_fn_t fn = mul_f32_select((simd_level_t)lvl);
+        for (size_t s = 0; s < sizeof(sizes) / sizeof(sizes[0]); s++) {
+            verify_mul_f32_variant(fn, sizes[s]);
+        }
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -64,6 +96,7 @@ int main(void)
     RUN_TEST(test_mul_f32_n31);
     RUN_TEST(test_mul_f32_n1024);
     RUN_TEST(test_mul_f32_all_variants);
+    RUN_TEST(test_mul_f32_tail_remainders);
     RUN_TEST(test_mul_f32_select_all_levels);
     return UNITY_END();
 }
