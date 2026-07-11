@@ -8,9 +8,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include <dynemit/radixs.h>
 #include <dynemit/compiler.h>
+#include "mem.h"
 
 #define RADIXS_U16_BUCKETS 65536u
 
@@ -23,7 +23,13 @@ static inline uint32_t *
 radixs_u16_alloc_counts(void)
 {
     void *p = aligned_alloc(64, RADIXS_U16_BUCKETS * sizeof(uint32_t));
-    if (p) memset(p, 0, RADIXS_U16_BUCKETS * sizeof(uint32_t));
+    if (p) {
+        if (memsets(p, RADIXS_U16_BUCKETS * sizeof(uint32_t), 0,
+                             RADIXS_U16_BUCKETS * sizeof(uint32_t)) != 0) {
+            free(p);
+            return NULL;
+        }
+    }
     return (uint32_t *)p;
 }
 
@@ -38,8 +44,11 @@ radixs_u16_cmp(const void *a, const void *b)
 static void
 radixs_u16_qsort_fallback(const uint16_t *in, uint16_t *out, size_t n)
 {
-    if (in != out)
-        memcpy(out, in, n * sizeof(uint16_t));
+    if (in != out) {
+        if (memcpys(out, n * sizeof(uint16_t), in,
+                             n * sizeof(uint16_t)) != 0)
+            return;
+    }
     qsort(out, n, sizeof(uint16_t), radixs_u16_cmp);
 }
 
@@ -171,7 +180,13 @@ radixs_u16_avx2(const uint16_t *in, uint16_t *out, size_t n)
     uint32_t *counts1 = (uint32_t *)aligned_alloc(64,
                             RADIXS_U16_BUCKETS * sizeof(uint32_t));
     if (counts1) {
-        memset(counts1, 0, RADIXS_U16_BUCKETS * sizeof(uint32_t));
+        if (memsets(counts1, RADIXS_U16_BUCKETS * sizeof(uint32_t), 0,
+                             RADIXS_U16_BUCKETS * sizeof(uint32_t)) != 0) {
+            free(counts1);
+            counts1 = NULL;
+        }
+    }
+    if (counts1) {
         size_t i = 0;
         for (; i + 2 <= n; i += 2) {
             counts0[in[i]]++;
@@ -364,10 +379,9 @@ radixs_u16_select(simd_level_t level)
     }
 }
 
-static radixs_u16_fn_t
-radixs_u16_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(radixs_u16_resolver, radixs_u16_fn_t)
 {
-    return radixs_u16_select(detect_simd_level());
+    return radixs_u16_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

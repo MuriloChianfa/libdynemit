@@ -11,6 +11,14 @@ add_executable(test_features test_features.c)
 target_include_directories(test_features PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(test_features PRIVATE dynemit unity m)
 
+# Bounded memory helpers (src/mem.h)
+add_executable(test_mem test_mem.c)
+target_include_directories(test_mem PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+target_link_libraries(test_mem PRIVATE unity m)
+
 # Test 2: Thread-safe SIMD detection test
 add_executable(test_thread_safe_detection test_thread_safe_detection.c)
 target_include_directories(test_thread_safe_detection PRIVATE ${PROJECT_SOURCE_DIR}/include)
@@ -38,6 +46,7 @@ target_link_libraries(test_cpp_resolver_macro PRIVATE dynemit_core GTest::gtest_
 
 # C test registration
 add_test(NAME test_features COMMAND test_features)
+add_test(NAME test_mem COMMAND test_mem)
 add_test(NAME test_thread_safe_detection COMMAND test_thread_safe_detection)
 add_test(NAME test_resolver_macro COMMAND test_resolver_macro)
 

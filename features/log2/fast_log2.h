@@ -15,7 +15,7 @@
  */
 
 #include <stdint.h>
-#include <string.h>
+#include "mem.h"
 
 #define SIMD_LOG2_LN2   0.69314718055994530941723212145818
 #define SIMD_LOG2_D0    (2.0 / ( 1.0 * SIMD_LOG2_LN2))
@@ -33,14 +33,14 @@ static inline double
 fast_log2_scalar(double x)
 {
     uint64_t xi;
-    memcpy(&xi, &x, sizeof(xi));
+    memcpys(&xi, sizeof(xi), &x, sizeof(xi));
 
     int64_t ei = (int64_t)((xi >> 52) & 0x7FF) - 1023;
     double e = (double)ei;
 
     uint64_t mi = (xi & 0x000FFFFFFFFFFFFFULL) | 0x3FF0000000000000ULL;
     double m;
-    memcpy(&m, &mi, sizeof(m));
+    memcpys(&m, sizeof(m), &mi, sizeof(m));
 
     if (m > SIMD_LOG2_SQRT2) {
         m *= 0.5;

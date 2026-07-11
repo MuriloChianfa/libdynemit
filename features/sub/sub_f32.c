@@ -183,10 +183,9 @@ sub_f32_select(simd_level_t level)
     }
 }
 
-static sub_f32_fn_t
-sub_f32_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(sub_f32_resolver, sub_f32_fn_t)
 {
-    return sub_f32_select(detect_simd_level());
+    return sub_f32_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

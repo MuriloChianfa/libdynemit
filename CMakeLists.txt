@@ -67,6 +67,7 @@ foreach(FEATURE_DIR ${FEATURE_DIRS})
         get_filename_component(FEATURE_NAME ${FEATURE_DIR} NAME)
         add_subdirectory(features/${FEATURE_NAME})
         target_compile_options(${FEATURE_NAME}_obj PRIVATE -falign-functions=64)
+        target_include_directories(${FEATURE_NAME}_obj PRIVATE ${PROJECT_SOURCE_DIR}/src)
         list(APPEND FEATURE_OBJECTS $<TARGET_OBJECTS:${FEATURE_NAME}_obj>)
     endif()
 endforeach()
@@ -97,6 +98,7 @@ if(DYNEMIT_STATIC_BENCHMARKS)
     message(STATUS "Static benchmarks:  ON")
 endif()
 
+option(DYNEMIT_BUILD_TESTS "Build core library tests" ON)
 if(DYNEMIT_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
@@ -115,6 +117,7 @@ set_target_properties(dynemit_static PROPERTIES
 target_include_directories(dynemit_static 
     PUBLIC 
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 if(DYNEMIT_TS)
@@ -141,6 +144,7 @@ set_target_properties(dynemit_shared PROPERTIES
 target_include_directories(dynemit_shared 
     PUBLIC 
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 if(DYNEMIT_TS)

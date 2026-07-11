@@ -175,10 +175,9 @@ hll_u64_select(simd_level_t level)
     }
 }
 
-static hll_u64_fn_t
-hll_u64_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(hll_u64_resolver, hll_u64_fn_t)
 {
-    return hll_u64_select(detect_simd_level());
+    return hll_u64_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

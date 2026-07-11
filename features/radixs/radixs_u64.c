@@ -8,22 +8,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include <dynemit/radixs.h>
 #include <dynemit/compiler.h>
+#include "mem.h"
 
 #define RADIXS_U64_PASSES 8
 #define RADIXS_U64_BUCKETS 256
-
-/*
- * ISO C11 aligned_alloc() requires the requested size to be a multiple of
- * the alignment, and glibc's allocator (as well as the AddressSanitizer
- * allocator interceptor) treats violations as hard failures. Round the scratch
- * size up to the next multiple of 64 bytes so the call is well-defined for
- * every n. The overhead is at most 63 bytes per call.
- */
-#define RADIXS_U64_TMP_BYTES(n) \
-    ((((size_t)(n) * sizeof(uint64_t)) + (size_t)63) & ~(size_t)63)
 
 static int
 radixs_u64_cmp(const void *a, const void *b)
@@ -36,8 +26,11 @@ radixs_u64_cmp(const void *a, const void *b)
 static void
 radixs_u64_qsort_fallback(const uint64_t *in, uint64_t *out, size_t n)
 {
-    if (in != out)
-        memcpy(out, in, n * sizeof(uint64_t));
+    if (in != out) {
+        if (memcpys(out, n * sizeof(uint64_t), in,
+                             n * sizeof(uint64_t)) != 0)
+            return;
+    }
     qsort(out, n, sizeof(uint64_t), radixs_u64_cmp);
 }
 
@@ -50,7 +43,11 @@ static unsigned
 radixs_u64_build_histograms(const uint64_t *in, size_t n,
                            uint32_t hist[RADIXS_U64_PASSES][RADIXS_U64_BUCKETS])
 {
-    memset(hist, 0, sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS);
+    if (memsets(hist,
+                         sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS,
+                         0,
+                         sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS) != 0)
+        return 0;
 
     for (size_t i = 0; i < n; i++) {
         uint64_t v = in[i];
@@ -113,7 +110,7 @@ radixs_u64_run(const uint64_t *in, uint64_t *out, size_t n)
         radixs_u64_qsort_fallback(in, out, n);
         return;
     }
-    uint64_t *tmp = aligned_alloc(64, RADIXS_U64_TMP_BYTES(n));
+    uint64_t *tmp = aligned_alloc(64, mem_aligned_count(n, uint64_t));
     if (!tmp) {
         free(hist);
         radixs_u64_qsort_fallback(in, out, n);
@@ -131,8 +128,15 @@ radixs_u64_run(const uint64_t *in, uint64_t *out, size_t n)
     }
 
     if (active_passes == 0) {
-        memcpy(out, in, n * sizeof(uint64_t));
-        free(tmp); free(hist); return;
+        if (memcpys(out, n * sizeof(uint64_t), in,
+                             n * sizeof(uint64_t)) != 0) {
+            free(tmp);
+            free(hist);
+            return;
+        }
+        free(tmp);
+        free(hist);
+        return;
     }
 
     const uint64_t *src = in;
@@ -191,7 +195,11 @@ static unsigned
 radixs_u64_build_histograms_avx2(const uint64_t *in, size_t n,
                                 uint32_t hist[RADIXS_U64_PASSES][RADIXS_U64_BUCKETS])
 {
-    memset(hist, 0, sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS);
+    if (memsets(hist,
+                         sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS,
+                         0,
+                         sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS) != 0)
+        return 0;
 
     const __m256i mask = _mm256_set1_epi64x(0xff);
     size_t i = 0;
@@ -238,7 +246,7 @@ radixs_u64_avx2(const uint64_t *in, uint64_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U64_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS);
     if (!hist) { radixs_u64_qsort_fallback(in, out, n); return; }
-    uint64_t *tmp = aligned_alloc(64, RADIXS_U64_TMP_BYTES(n));
+    uint64_t *tmp = aligned_alloc(64, mem_aligned_count(n, uint64_t));
     if (!tmp) { free(hist); radixs_u64_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u64_build_histograms_avx2(in, n, hist);
@@ -249,8 +257,15 @@ radixs_u64_avx2(const uint64_t *in, uint64_t *out, size_t n)
         if (!(skip & (1u << p))) pass_list[active++] = p;
 
     if (active == 0) {
-        memcpy(out, in, n * sizeof(uint64_t));
-        free(tmp); free(hist); return;
+        if (memcpys(out, n * sizeof(uint64_t), in,
+                             n * sizeof(uint64_t)) != 0) {
+            free(tmp);
+            free(hist);
+            return;
+        }
+        free(tmp);
+        free(hist);
+        return;
     }
 
     const uint64_t *src = in;
@@ -321,7 +336,7 @@ radixs_u64_avx512f(const uint64_t *in, uint64_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U64_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS);
     if (!hist) { radixs_u64_qsort_fallback(in, out, n); return; }
-    uint64_t *tmp = aligned_alloc(64, RADIXS_U64_TMP_BYTES(n));
+    uint64_t *tmp = aligned_alloc(64, mem_aligned_count(n, uint64_t));
     if (!tmp) { free(hist); radixs_u64_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u64_build_histograms_avx2(in, n, hist);
@@ -332,8 +347,15 @@ radixs_u64_avx512f(const uint64_t *in, uint64_t *out, size_t n)
         if (!(skip & (1u << p))) pass_list[active++] = p;
 
     if (active == 0) {
-        memcpy(out, in, n * sizeof(uint64_t));
-        free(tmp); free(hist); return;
+        if (memcpys(out, n * sizeof(uint64_t), in,
+                             n * sizeof(uint64_t)) != 0) {
+            free(tmp);
+            free(hist);
+            return;
+        }
+        free(tmp);
+        free(hist);
+        return;
     }
 
     const uint64_t *src = in;
@@ -415,7 +437,7 @@ radixs_u64_avx512_vbmi2(const uint64_t *in, uint64_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U64_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U64_PASSES * RADIXS_U64_BUCKETS);
     if (!hist) { radixs_u64_qsort_fallback(in, out, n); return; }
-    uint64_t *tmp = aligned_alloc(64, RADIXS_U64_TMP_BYTES(n));
+    uint64_t *tmp = aligned_alloc(64, mem_aligned_count(n, uint64_t));
     if (!tmp) { free(hist); radixs_u64_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u64_build_histograms_avx2(in, n, hist);
@@ -426,8 +448,15 @@ radixs_u64_avx512_vbmi2(const uint64_t *in, uint64_t *out, size_t n)
         if (!(skip & (1u << p))) pass_list[active++] = p;
 
     if (active == 0) {
-        memcpy(out, in, n * sizeof(uint64_t));
-        free(tmp); free(hist); return;
+        if (memcpys(out, n * sizeof(uint64_t), in,
+                             n * sizeof(uint64_t)) != 0) {
+            free(tmp);
+            free(hist);
+            return;
+        }
+        free(tmp);
+        free(hist);
+        return;
     }
 
     const uint64_t *src = in;
@@ -489,10 +518,9 @@ radixs_u64_select(simd_level_t level)
     }
 }
 
-static radixs_u64_fn_t
-radixs_u64_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(radixs_u64_resolver, radixs_u64_fn_t)
 {
-    return radixs_u64_select(detect_simd_level());
+    return radixs_u64_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

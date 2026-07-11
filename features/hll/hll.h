@@ -35,7 +35,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
+
+#include "mem.h"
 
 #include "bias.h"
 
@@ -108,7 +109,11 @@ hll_get_regs(void)
     if (__builtin_expect(!hll_regs_tls, 0)) {
         hll_regs_tls = aligned_alloc(64, DYNEMIT_HLL_M);
         if (!hll_regs_tls) return NULL;
-        memset(hll_regs_tls, 0, DYNEMIT_HLL_M);
+        if (memsets(hll_regs_tls, DYNEMIT_HLL_M, 0, DYNEMIT_HLL_M) != 0) {
+            free(hll_regs_tls);
+            hll_regs_tls = NULL;
+            return NULL;
+        }
     }
     return hll_regs_tls;
 }
@@ -117,7 +122,7 @@ hll_get_regs(void)
 static inline void
 hll_reset_regs(uint8_t *regs)
 {
-    memset(regs, 0, DYNEMIT_HLL_M);
+    memsets(regs, DYNEMIT_HLL_M, 0, DYNEMIT_HLL_M);
 }
 
 /*

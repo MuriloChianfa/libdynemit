@@ -185,10 +185,9 @@ min_u16_select(simd_level_t level)
     }
 }
 
-static min_u16_fn_t
-min_u16_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(min_u16_resolver, min_u16_fn_t)
 {
-    return min_u16_select(detect_simd_level());
+    return min_u16_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

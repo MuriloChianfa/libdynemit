@@ -1,7 +1,7 @@
 /**
  * C++ IFUNC Resolver Macro Test (GTest)
  *
- * Tests that the EXPLICIT_RUNTIME_RESOLVER macro works correctly
+ * Tests that the EXPLICIT_RUNTIME_RESOLVER(name, fn_type) macro works correctly
  * when used in C++ code. This ensures C++ projects can create
  * their own IFUNC resolvers using the library's helpers.
  */
@@ -43,23 +43,25 @@ static void test_func_avx512(float* out, const float* a, const float* b, size_t 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 
+using test_func_cpp_t = void (*)(float*, const float*, const float*, size_t);
+
 extern "C" {
-EXPLICIT_RUNTIME_RESOLVER(test_func_resolver)
+EXPLICIT_RUNTIME_RESOLVER(test_func_resolver, test_func_cpp_t)
 {
     simd_level_t level = detect_simd_level_ts();
 
     switch (level) {
     case SIMD_AVX512F:
-        return reinterpret_cast<void*>(test_func_avx512);
+        return test_func_avx512;
     case SIMD_AVX2:
-        return reinterpret_cast<void*>(test_func_avx2);
+        return test_func_avx2;
     case SIMD_AVX:
-        return reinterpret_cast<void*>(test_func_avx);
+        return test_func_avx;
     case SIMD_SSE4_2:
     case SIMD_SSE2:
-        return reinterpret_cast<void*>(test_func_sse2);
+        return test_func_sse2;
     default:
-        return reinterpret_cast<void*>(test_func_scalar);
+        return test_func_scalar;
     }
 }
 

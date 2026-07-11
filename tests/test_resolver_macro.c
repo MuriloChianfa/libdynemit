@@ -8,30 +8,25 @@ static int sample_func_scalar(int x) { return x * 1; }
 
 typedef int (*sample_func_t)(int);
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-
-EXPLICIT_RUNTIME_RESOLVER(sample_resolver)
+EXPLICIT_RUNTIME_RESOLVER(sample_resolver, sample_func_t)
 {
     simd_level_t level = detect_simd_level_ts();
     switch (level) {
     case SIMD_AVX512F:
-    case SIMD_AVX2:    return (void *)sample_func_avx2;
+    case SIMD_AVX2:    return sample_func_avx2;
     case SIMD_AVX:
     case SIMD_SSE4_2:
-    case SIMD_SSE2:    return (void *)sample_func_sse2;
+    case SIMD_SSE2:    return sample_func_sse2;
     case SIMD_SCALAR:
-    default:           return (void *)sample_func_scalar;
+    default:           return sample_func_scalar;
     }
 }
 
-EXPLICIT_RUNTIME_RESOLVER(scalar_only_resolver)
+EXPLICIT_RUNTIME_RESOLVER(scalar_only_resolver, sample_func_t)
 {
     (void)detect_simd_level_ts();
-    return (void *)sample_func_scalar;
+    return sample_func_scalar;
 }
-
-#pragma GCC diagnostic pop
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -44,7 +39,7 @@ void test_resolver_returns_non_null(void)
 void test_resolver_matches_simd_level(void)
 {
     simd_level_t level = detect_simd_level_ts();
-    sample_func_t func = (sample_func_t)sample_resolver();
+    sample_func_t func = sample_resolver();
     int result = func(10);
 
     int expected;
@@ -61,16 +56,15 @@ void test_resolver_matches_simd_level(void)
 
 void test_resolver_consistent(void)
 {
-    void *a = sample_resolver();
-    void *b = sample_resolver();
+    sample_func_t a = sample_resolver();
+    sample_func_t b = sample_resolver();
     TEST_ASSERT_EQUAL_PTR(a, b);
 }
 
 void test_scalar_only_resolver(void)
 {
-    void *ptr = scalar_only_resolver();
-    TEST_ASSERT_NOT_NULL(ptr);
-    sample_func_t func = (sample_func_t)ptr;
+    sample_func_t func = scalar_only_resolver();
+    TEST_ASSERT_NOT_NULL(func);
     TEST_ASSERT_EQUAL_INT(10, func(10));
 }
 

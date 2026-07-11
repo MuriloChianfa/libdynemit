@@ -12,7 +12,7 @@ cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build -j$(nproc)
 ```
 
-Symlink the compilation database so your IDE resolves headers correctly:
+Symlink the compilation database so your IDE (clangd) resolves headers correctly:
 
 ```bash
 ln -sf build/compile_commands.json compile_commands.json
@@ -92,6 +92,8 @@ Run clang-tidy on feature implementations only (excludes `tests/` and
 run-clang-tidy-21 -p build-tidy -checks='performance-*' -header-filter=.* 'features/[^/]+/[^/]+\.c'
 ```
 
+Feature code uses `memcpys` / `memsets` and `mem_aligned_count()` from `"mem.h"` (under `src/`) instead of raw libc `memcpy`/`memset`.
+
 This check also runs in CI (see the `clang-tidy-performance` job in `.github/workflows/ci.yml`).
 
 ## Mutation Testing (Mull)
@@ -158,6 +160,8 @@ features/<name>/
       └── bench_<name>.c    # performance benchmarks
 
 tests/                      # core-only tests (SIMD detection, C++ compat)
+src/
+  └── mem.h                 # bounded memcpys / memsets; mem_aligned_count()
 bench/
   └── bench_utils.h         # shared benchmark infrastructure (header-only)
 include/dynemit/

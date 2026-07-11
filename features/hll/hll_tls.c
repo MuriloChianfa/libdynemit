@@ -1,8 +1,11 @@
 /* SPDX-License-Identifier: BSL-1.0 */
+#if DYNEMIT_TS
+
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
+
+#include "mem.h"
 
 #include "hll.h"
 
@@ -38,7 +41,10 @@ hll_get_regs(void)
     if (__builtin_expect(!regs, 0)) {
         regs = aligned_alloc(64, DYNEMIT_HLL_M);
         if (!regs) return NULL;
-        memset(regs, 0, DYNEMIT_HLL_M);
+        if (memsets(regs, DYNEMIT_HLL_M, 0, DYNEMIT_HLL_M) != 0) {
+            free(regs);
+            return NULL;
+        }
         if (hll_regs_pthread_ok) {
             if (pthread_setspecific(hll_regs_key, regs) != 0) {
                 free(regs);
@@ -50,3 +56,5 @@ hll_get_regs(void)
     }
     return regs;
 }
+
+#endif /* DYNEMIT_TS */

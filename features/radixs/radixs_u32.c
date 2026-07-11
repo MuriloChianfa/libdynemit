@@ -8,22 +8,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include <dynemit/radixs.h>
 #include <dynemit/compiler.h>
+#include "mem.h"
 
 #define RADIXS_U32_PASSES 4
 #define RADIXS_U32_BUCKETS 256
-
-/*
- * ISO C11 aligned_alloc() requires the requested size to be a multiple of
- * the alignment, and glibc's allocator (as well as the AddressSanitizer
- * allocator interceptor) treats violations as hard failures. Round the scratch
- * size up to the next multiple of 64 bytes so the call is well-defined for
- * every n. The overhead is at most 63 bytes per call.
- */
-#define RADIXS_U32_TMP_BYTES(n) \
-    ((((size_t)(n) * sizeof(uint32_t)) + (size_t)63) & ~(size_t)63)
 
 /*
  * Comparator and qsort fallback used when scratch allocation fails so the
@@ -40,8 +30,11 @@ radixs_u32_cmp(const void *a, const void *b)
 static void
 radixs_u32_qsort_fallback(const uint32_t *in, uint32_t *out, size_t n)
 {
-    if (in != out)
-        memcpy(out, in, n * sizeof(uint32_t));
+    if (in != out) {
+        if (memcpys(out, n * sizeof(uint32_t), in,
+                             n * sizeof(uint32_t)) != 0)
+            return;
+    }
     qsort(out, n, sizeof(uint32_t), radixs_u32_cmp);
 }
 
@@ -54,7 +47,11 @@ static unsigned
 radixs_u32_build_histograms(const uint32_t *in, size_t n,
                            uint32_t hist[RADIXS_U32_PASSES][RADIXS_U32_BUCKETS])
 {
-    memset(hist, 0, sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS);
+    if (memsets(hist,
+                         sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS,
+                         0,
+                         sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS) != 0)
+        return 0;
 
     for (size_t i = 0; i < n; i++) {
         uint32_t v = in[i];
@@ -125,7 +122,7 @@ radixs_u32_run(const uint32_t *in, uint32_t *out, size_t n)
         radixs_u32_qsort_fallback(in, out, n);
         return;
     }
-    uint32_t *tmp = aligned_alloc(64, RADIXS_U32_TMP_BYTES(n));
+    uint32_t *tmp = aligned_alloc(64, mem_aligned_count(n, uint32_t));
     if (!tmp) {
         free(hist);
         radixs_u32_qsort_fallback(in, out, n);
@@ -143,7 +140,12 @@ radixs_u32_run(const uint32_t *in, uint32_t *out, size_t n)
     }
 
     if (active_passes == 0) {
-        memcpy(out, in, n * sizeof(uint32_t));
+        if (memcpys(out, n * sizeof(uint32_t), in,
+                             n * sizeof(uint32_t)) != 0) {
+            free(tmp);
+            free(hist);
+            return;
+        }
         free(tmp);
         free(hist);
         return;
@@ -220,7 +222,11 @@ static unsigned
 radixs_u32_build_histograms_avx2(const uint32_t *in, size_t n,
                                 uint32_t hist[RADIXS_U32_PASSES][RADIXS_U32_BUCKETS])
 {
-    memset(hist, 0, sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS);
+    if (memsets(hist,
+                         sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS,
+                         0,
+                         sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS) != 0)
+        return 0;
 
     const __m256i mask = _mm256_set1_epi32(0xff);
     size_t i = 0;
@@ -273,7 +279,7 @@ radixs_u32_avx2_run(const uint32_t *in, uint32_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U32_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS);
     if (!hist) { radixs_u32_qsort_fallback(in, out, n); return; }
-    uint32_t *tmp = aligned_alloc(64, RADIXS_U32_TMP_BYTES(n));
+    uint32_t *tmp = aligned_alloc(64, mem_aligned_count(n, uint32_t));
     if (!tmp) { free(hist); radixs_u32_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u32_build_histograms_avx2(in, n, hist);
@@ -284,8 +290,15 @@ radixs_u32_avx2_run(const uint32_t *in, uint32_t *out, size_t n)
         if (!(skip & (1u << p))) pass_list[active++] = p;
 
     if (active == 0) {
-        memcpy(out, in, n * sizeof(uint32_t));
-        free(tmp); free(hist); return;
+        if (memcpys(out, n * sizeof(uint32_t), in,
+                             n * sizeof(uint32_t)) != 0) {
+            free(tmp);
+            free(hist);
+            return;
+        }
+        free(tmp);
+        free(hist);
+        return;
     }
 
     const uint32_t *src = in;
@@ -365,7 +378,7 @@ radixs_u32_avx512f(const uint32_t *in, uint32_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U32_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS);
     if (!hist) { radixs_u32_qsort_fallback(in, out, n); return; }
-    uint32_t *tmp = aligned_alloc(64, RADIXS_U32_TMP_BYTES(n));
+    uint32_t *tmp = aligned_alloc(64, mem_aligned_count(n, uint32_t));
     if (!tmp) { free(hist); radixs_u32_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u32_build_histograms_avx2(in, n, hist);
@@ -376,8 +389,15 @@ radixs_u32_avx512f(const uint32_t *in, uint32_t *out, size_t n)
         if (!(skip & (1u << p))) pass_list[active++] = p;
 
     if (active == 0) {
-        memcpy(out, in, n * sizeof(uint32_t));
-        free(tmp); free(hist); return;
+        if (memcpys(out, n * sizeof(uint32_t), in,
+                             n * sizeof(uint32_t)) != 0) {
+            free(tmp);
+            free(hist);
+            return;
+        }
+        free(tmp);
+        free(hist);
+        return;
     }
 
     const uint32_t *src = in;
@@ -457,7 +477,7 @@ radixs_u32_avx512_vbmi2(const uint32_t *in, uint32_t *out, size_t n)
     uint32_t (*hist)[RADIXS_U32_BUCKETS] =
         aligned_alloc(64, sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS);
     if (!hist) { radixs_u32_qsort_fallback(in, out, n); return; }
-    uint32_t *tmp = aligned_alloc(64, RADIXS_U32_TMP_BYTES(n));
+    uint32_t *tmp = aligned_alloc(64, mem_aligned_count(n, uint32_t));
     if (!tmp) { free(hist); radixs_u32_qsort_fallback(in, out, n); return; }
 
     unsigned skip = radixs_u32_build_histograms_avx2(in, n, hist);
@@ -468,8 +488,15 @@ radixs_u32_avx512_vbmi2(const uint32_t *in, uint32_t *out, size_t n)
         if (!(skip & (1u << p))) pass_list[active++] = p;
 
     if (active == 0) {
-        memcpy(out, in, n * sizeof(uint32_t));
-        free(tmp); free(hist); return;
+        if (memcpys(out, n * sizeof(uint32_t), in,
+                             n * sizeof(uint32_t)) != 0) {
+            free(tmp);
+            free(hist);
+            return;
+        }
+        free(tmp);
+        free(hist);
+        return;
     }
 
     const uint32_t *src = in;
@@ -531,10 +558,9 @@ radixs_u32_select(simd_level_t level)
     }
 }
 
-static radixs_u32_fn_t
-radixs_u32_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(radixs_u32_resolver, radixs_u32_fn_t)
 {
-    return radixs_u32_select(detect_simd_level());
+    return radixs_u32_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

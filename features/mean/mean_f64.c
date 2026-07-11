@@ -174,10 +174,9 @@ mean_f64_select(simd_level_t level)
     }
 }
 
-static mean_f64_fn_t
-mean_f64_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(mean_f64_resolver, mean_f64_fn_t)
 {
-    return mean_f64_select(detect_simd_level());
+    return mean_f64_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

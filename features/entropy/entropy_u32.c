@@ -9,9 +9,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include <dynemit/compiler.h>
 #include <dynemit/entropy.h>
+#include "mem.h"
 
 static int
 cmp_u32(const void *a, const void *b)
@@ -31,7 +31,11 @@ entropy_u32_scalar(const uint32_t *data, size_t n)
     if (n == 0) return 0.0;
     uint32_t *sorted = malloc(n * sizeof(uint32_t));
     if (!sorted) return 0.0;
-    memcpy(sorted, data, n * sizeof(uint32_t));
+    if (memcpys(sorted, n * sizeof(uint32_t), data,
+                         n * sizeof(uint32_t)) != 0) {
+        free(sorted);
+        return 0.0;
+    }
     qsort(sorted, n, sizeof(uint32_t), cmp_u32);
 
     size_t cap = 256;
@@ -359,10 +363,9 @@ entropy_u32_select(simd_level_t level)
     }
 }
 
-static entropy_u32_fn_t
-entropy_u32_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(entropy_u32_resolver, entropy_u32_fn_t)
 {
-    return entropy_u32_select(detect_simd_level());
+    return entropy_u32_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

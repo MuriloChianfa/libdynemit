@@ -163,10 +163,9 @@ topk_ratios_f64_select(simd_level_t level)
     }
 }
 
-static topk_ratios_f64_fn_t
-topk_ratios_f64_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(topk_ratios_f64_resolver, topk_ratios_f64_fn_t)
 {
-    return topk_ratios_f64_select(detect_simd_level());
+    return topk_ratios_f64_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

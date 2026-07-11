@@ -263,10 +263,9 @@ skewness_f64_select(simd_level_t level)
     }
 }
 
-static skewness_f64_fn_t
-skewness_f64_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(skewness_f64_resolver, skewness_f64_fn_t)
 {
-    return skewness_f64_select(detect_simd_level());
+    return skewness_f64_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

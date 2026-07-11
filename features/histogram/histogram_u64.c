@@ -9,9 +9,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include <dynemit/histogram.h>
 #include <dynemit/compiler.h>
+#include "mem.h"
 
 /*
  * Count elements falling into ranges defined by boundaries.
@@ -33,7 +33,9 @@ histogram_u64_scalar(const uint64_t *data, size_t n,
                            const uint64_t *boundaries, size_t num_boundaries,
                            uint64_t *out)
 {
-    memset(out, 0, (num_boundaries + 1) * sizeof(uint64_t));
+    if (memsets(out, (num_boundaries + 1) * sizeof(uint64_t), 0,
+                         (num_boundaries + 1) * sizeof(uint64_t)) != 0)
+        return;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
         uint64_t val = data[i];
@@ -97,7 +99,9 @@ histogram_u64_avx512f(const uint64_t *data, size_t n,
      * Process 8 elements at a time. For each boundary, count elements
      * that are less than the boundary using _mm512_cmplt_epu64_mask.
      */
-    memset(out, 0, (num_boundaries + 1) * sizeof(uint64_t));
+    if (memsets(out, (num_boundaries + 1) * sizeof(uint64_t), 0,
+                         (num_boundaries + 1) * sizeof(uint64_t)) != 0)
+        return;
     if (num_boundaries == 0) {
         out[0] = n;
         return;
@@ -194,10 +198,9 @@ histogram_u64_select(simd_level_t level)
     }
 }
 
-static histogram_u64_fn_t
-histogram_u64_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(histogram_u64_resolver, histogram_u64_fn_t)
 {
-    return histogram_u64_select(detect_simd_level());
+    return histogram_u64_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

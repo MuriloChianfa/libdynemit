@@ -2,6 +2,8 @@
 #ifndef DYNEMIT_COMPILER_H
 #define DYNEMIT_COMPILER_H
 
+#include <dynemit/err.h>
+
 /**
  * @file compiler.h
  * @brief Compiler portability macros for dynemit

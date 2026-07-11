@@ -272,10 +272,9 @@ entropy_histogram_select(simd_level_t level)
     }
 }
 
-static entropy_histogram_fn_t
-entropy_histogram_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(entropy_histogram_resolver, entropy_histogram_fn_t)
 {
-    return entropy_histogram_select(detect_simd_level());
+    return entropy_histogram_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

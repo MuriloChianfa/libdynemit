@@ -201,10 +201,9 @@ max_f64_select(simd_level_t level)
     }
 }
 
-static max_f64_fn_t
-max_f64_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(max_f64_resolver, max_f64_fn_t)
 {
-    return max_f64_select(detect_simd_level());
+    return max_f64_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

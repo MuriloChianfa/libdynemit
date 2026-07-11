@@ -9,9 +9,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include <dynemit/histogram.h>
 #include <dynemit/compiler.h>
+#include "mem.h"
 
 /*
  * Count elements falling into ranges defined by boundaries.
@@ -32,7 +32,9 @@ histogram_u16_scalar(const uint16_t *data, size_t n,
                            const uint16_t *boundaries, size_t num_boundaries,
                            uint64_t *out)
 {
-    memset(out, 0, (num_boundaries + 1) * sizeof(uint64_t));
+    if (memsets(out, (num_boundaries + 1) * sizeof(uint64_t), 0,
+                         (num_boundaries + 1) * sizeof(uint64_t)) != 0)
+        return;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
         uint16_t val = data[i];
@@ -88,7 +90,9 @@ histogram_u16_avx2(const uint16_t *data, size_t n,
      * using unsigned comparison (bias by 0x8000 for signed cmpgt).
      * Count how many elements are >= each boundary to determine bucket.
      */
-    memset(out, 0, (num_boundaries + 1) * sizeof(uint64_t));
+    if (memsets(out, (num_boundaries + 1) * sizeof(uint64_t), 0,
+                         (num_boundaries + 1) * sizeof(uint64_t)) != 0)
+        return;
     if (num_boundaries == 0) {
         out[0] = n;
         return;
@@ -210,10 +214,9 @@ histogram_u16_select(simd_level_t level)
     }
 }
 
-static histogram_u16_fn_t
-histogram_u16_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(histogram_u16_resolver, histogram_u16_fn_t)
 {
-    return histogram_u16_select(detect_simd_level());
+    return histogram_u16_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

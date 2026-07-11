@@ -50,19 +50,19 @@ extern "C" {
  * 
  * typedef void (*my_func_t)(float*, float*, size_t);
  * 
- * EXPLICIT_RUNTIME_RESOLVER(my_function_resolver)
+ * EXPLICIT_RUNTIME_RESOLVER(my_function_resolver, my_func_t)
  * {
  *     simd_level_t level = detect_simd_level_ts();
  *     
  *     switch (level) {
  *     case SIMD_AVX512F:
- *         return (void*)my_function_avx512;
+ *         return my_function_avx512;
  *     case SIMD_AVX2:
- *         return (void*)my_function_avx2;
+ *         return my_function_avx2;
  *     case SIMD_SSE2:
- *         return (void*)my_function_sse2;
+ *         return my_function_sse2;
  *     default:
- *         return (void*)my_function_scalar;
+ *         return my_function_scalar;
  *     }
  * }
  * 
@@ -70,26 +70,23 @@ extern "C" {
  *     __attribute__((ifunc("my_function_resolver")));
  * @endcode
  * 
- * @note Function pointer to void* conversions will generate -Wpedantic warnings.
- *       These are expected and safe for IFUNC resolvers. You can suppress them
- *       with: #pragma GCC diagnostic ignored "-Wpedantic"
- * 
  * @note Always use detect_simd_level_ts() (not detect_simd_level()) inside
  *       resolvers to ensure thread-safe, cached SIMD detection.
  * 
  * @param name The name of the resolver function (used by ifunc attribute)
+ * @param fn_type Function pointer typedef for the resolved implementation
  */
-#define EXPLICIT_RUNTIME_RESOLVER(name) \
-    static void* name##_impl(void); \
+#define EXPLICIT_RUNTIME_RESOLVER(name, fn_type) \
+    static fn_type name##_impl(void); \
     __attribute__((used)) \
-    static void* name(void) { \
-        void* result = name##_impl(); \
+    static fn_type name(void) { \
+        fn_type result = name##_impl(); \
         if (!result) { \
             __builtin_trap(); \
         } \
         return result; \
     } \
-    static void* name##_impl(void)
+    static fn_type name##_impl(void)
 
 #ifdef __cplusplus
 }

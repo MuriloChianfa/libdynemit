@@ -198,10 +198,9 @@ gini_u64_select(simd_level_t level)
     }
 }
 
-static gini_u64_fn_t
-gini_u64_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(gini_u64_resolver, gini_u64_fn_t)
 {
-    return gini_u64_select(detect_simd_level());
+    return gini_u64_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

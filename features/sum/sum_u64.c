@@ -156,10 +156,9 @@ sum_u64_select(simd_level_t level)
     }
 }
 
-static sum_u64_fn_t
-sum_u64_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(sum_u64_resolver, sum_u64_fn_t)
 {
-    return sum_u64_select(detect_simd_level());
+    return sum_u64_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

@@ -8,9 +8,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include <dynemit/hhi.h>
 #include <dynemit/compiler.h>
+#include "mem.h"
 
 static int
 cmp_u32(const void *a, const void *b)
@@ -30,7 +30,11 @@ hhi_u32_scalar(const uint32_t *data, size_t n)
     if (n == 0) return 0.0;
     uint32_t *sorted = (uint32_t *)malloc(n * sizeof(uint32_t));
     if (!sorted) return 0.0;
-    memcpy(sorted, data, n * sizeof(uint32_t));
+    if (memcpys(sorted, n * sizeof(uint32_t), data,
+                         n * sizeof(uint32_t)) != 0) {
+        free(sorted);
+        return 0.0;
+    }
     qsort(sorted, n, sizeof(uint32_t), cmp_u32);
     double total = (double)n;
     double sum_sq = 0.0;
@@ -73,7 +77,11 @@ hhi_u32_avx(const uint32_t *data, size_t n)
     if (n == 0) return 0.0;
     uint32_t *sorted = (uint32_t *)malloc(n * sizeof(uint32_t));
     if (!sorted) return 0.0;
-    memcpy(sorted, data, n * sizeof(uint32_t));
+    if (memcpys(sorted, n * sizeof(uint32_t), data,
+                         n * sizeof(uint32_t)) != 0) {
+        free(sorted);
+        return 0.0;
+    }
     qsort(sorted, n, sizeof(uint32_t), cmp_u32);
 
     size_t ndistinct = 0;
@@ -133,7 +141,11 @@ hhi_u32_avx512f(const uint32_t *data, size_t n)
     if (n == 0) return 0.0;
     uint32_t *sorted = (uint32_t *)malloc(n * sizeof(uint32_t));
     if (!sorted) return 0.0;
-    memcpy(sorted, data, n * sizeof(uint32_t));
+    if (memcpys(sorted, n * sizeof(uint32_t), data,
+                         n * sizeof(uint32_t)) != 0) {
+        free(sorted);
+        return 0.0;
+    }
     qsort(sorted, n, sizeof(uint32_t), cmp_u32);
 
     size_t ndistinct = 0;
@@ -223,10 +235,9 @@ hhi_u32_select(simd_level_t level)
     }
 }
 
-static hhi_u32_fn_t
-hhi_u32_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(hhi_u32_resolver, hhi_u32_fn_t)
 {
-    return hhi_u32_select(detect_simd_level());
+    return hhi_u32_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

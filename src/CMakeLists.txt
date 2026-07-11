@@ -9,6 +9,7 @@ add_library(dynemit_core_obj OBJECT
 target_include_directories(dynemit_core_obj 
     PUBLIC 
         ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
 )
 
 # Set position independent code for use in shared libraries
@@ -24,6 +25,7 @@ add_library(dynemit_core STATIC
 target_include_directories(dynemit_core 
     PUBLIC 
         ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
 )
 
 # Link math library if needed

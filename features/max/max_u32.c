@@ -228,10 +228,9 @@ max_u32_select(simd_level_t level)
     }
 }
 
-static max_u32_fn_t
-max_u32_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(max_u32_resolver, max_u32_fn_t)
 {
-    return max_u32_select(detect_simd_level());
+    return max_u32_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

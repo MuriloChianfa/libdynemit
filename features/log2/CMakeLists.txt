@@ -18,7 +18,10 @@ install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/log2.h DESTINATION ${CMAKE_I
 
 # Tests
 add_executable(test_log2 tests/test_log2.c)
-target_include_directories(test_log2 PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(test_log2 PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
 target_link_libraries(test_log2 PRIVATE dynemit_log2 dynemit_core unity m)
 add_test(NAME test_log2 COMMAND test_log2)
 

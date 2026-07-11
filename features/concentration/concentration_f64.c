@@ -134,10 +134,9 @@ concentration_f64_select(simd_level_t level)
     }
 }
 
-static concentration_f64_fn_t
-concentration_f64_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(concentration_f64_resolver, concentration_f64_fn_t)
 {
-    return concentration_f64_select(detect_simd_level());
+    return concentration_f64_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

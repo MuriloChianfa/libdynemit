@@ -9,12 +9,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #if DYNEMIT_TS
 #include <pthread.h>
 #endif
 #include <dynemit/entropy.h>
 #include <dynemit/compiler.h>
+#include "mem.h"
 
 /*
  * Thread-local pre-zeroed buffers for entropy_u16.
@@ -80,7 +80,11 @@ eu16_get_bufs(uint32_t **hist, uint16_t **dirty)
         size_t sz = EU16_BINS * sizeof(uint32_t) + EU16_BINS * sizeof(uint16_t);
         eu16_tls = aligned_alloc(64, sz);
         if (!eu16_tls) return -1;
-        memset(eu16_tls, 0, EU16_BINS * sizeof(uint32_t));
+        if (memsets(eu16_tls, EU16_BINS * sizeof(uint32_t), 0,
+                             EU16_BINS * sizeof(uint32_t)) != 0) {
+            free(eu16_tls);
+            return -1;
+        }
         if (eu16_tls_pthread_ok) {
             if (pthread_setspecific(eu16_tls_key, eu16_tls) != 0) {
                 free(eu16_tls);
@@ -104,7 +108,11 @@ eu16_get_bufs(uint32_t **hist, uint16_t **dirty)
         size_t sz = EU16_BINS * sizeof(uint32_t) + EU16_BINS * sizeof(uint16_t);
         eu16_bufs = aligned_alloc(64, sz);
         if (!eu16_bufs) return -1;
-        memset(eu16_bufs, 0, EU16_BINS * sizeof(uint32_t));
+        if (memsets(eu16_bufs, EU16_BINS * sizeof(uint32_t), 0,
+                             EU16_BINS * sizeof(uint32_t)) != 0) {
+            free(eu16_bufs);
+            return -1;
+        }
     }
     *hist  = (uint32_t *)eu16_bufs;
     *dirty = (uint16_t *)((char *)eu16_bufs + EU16_BINS * sizeof(uint32_t));
@@ -122,7 +130,9 @@ eu16_cleanup(uint32_t *hist, const uint16_t *dirty,
             hist[dirty[k]] = 0;
         }
     } else {
-        memset(hist, 0, EU16_BINS * sizeof(uint32_t));
+        if (memsets(hist, EU16_BINS * sizeof(uint32_t), 0,
+                             EU16_BINS * sizeof(uint32_t)) != 0)
+            return;
     }
 }
 
@@ -575,10 +585,9 @@ entropy_u16_select(simd_level_t level)
     }
 }
 
-static entropy_u16_fn_t
-entropy_u16_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(entropy_u16_resolver, entropy_u16_fn_t)
 {
-    return entropy_u16_select(detect_simd_level());
+    return entropy_u16_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)

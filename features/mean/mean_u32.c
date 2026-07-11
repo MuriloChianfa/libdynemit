@@ -123,10 +123,9 @@ mean_u32_select(simd_level_t level)
     }
 }
 
-static mean_u32_fn_t
-mean_u32_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(mean_u32_resolver, mean_u32_fn_t)
 {
-    return mean_u32_select(detect_simd_level());
+    return mean_u32_select(detect_simd_level_ts());
 }
 
 #if defined(__x86_64__) || defined(__i386__)
