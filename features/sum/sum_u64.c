@@ -82,6 +82,9 @@ sum_u64_avx512f(const uint64_t *data, size_t n)
 static double
 sum_u64_neon(const uint64_t *data, size_t n)
 {
+    if (n == 0) {
+        return 0.0;
+    }
     size_t i = 0;
     float64x2_t vsum = vdupq_n_f64(0.0);
     for (; i + 2 <= n; i += 2) {
@@ -98,6 +101,9 @@ __attribute__((target("+sve")))
 static double
 sum_u64_sve(const uint64_t *data, size_t n)
 {
+    if (n == 0) {
+        return 0.0;
+    }
     uint64_t i = 0;
     svfloat64_t vsum = svdup_f64(0.0);
     svbool_t pg = svwhilelt_b64(i, (uint64_t)n);
@@ -114,6 +120,9 @@ __attribute__((target("+sve2")))
 static double
 sum_u64_sve2(const uint64_t *data, size_t n)
 {
+    if (n == 0) {
+        return 0.0;
+    }
     uint64_t i = 0;
     uint64_t vl = svcntd();
     svbool_t ptrue = svptrue_b64();

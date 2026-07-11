@@ -3,8 +3,10 @@ codecov:
 
 flag_management:
   default_rules:
-    carryforward: true
+    carryforward: false
   individual_flags:
+    - name: unittests
+      carryforward: false
     - name: x86_native
       carryforward: true
     - name: x86_sde
