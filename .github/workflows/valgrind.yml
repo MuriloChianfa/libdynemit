@@ -68,13 +68,19 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: valgrind-build-${{ matrix.arch }}
-        path: .
+        path: build/features
 
     - name: Restore executable bits
       run: |
+        if [[ ! -d build/features ]]; then
+          echo "Error: build/features missing after artifact download"
+          find . -type f -name 'test_*' | head -50
+          exit 1
+        fi
         find build/features -type f -name 'test_*' -exec chmod +x {} +
         echo "Discovered feature tests:"
-        find build/features -type f -name 'test_*' | sort
+        find build/features -type f -executable -name 'test_*' | sort
+        test "$(find build/features -type f -executable -name 'test_*' | wc -l)" -gt 0
 
     - name: Run Valgrind (${{ matrix.tool }})
       continue-on-error: ${{ contains(fromJSON('["massif","cachegrind","dhat"]'), matrix.tool) }}
