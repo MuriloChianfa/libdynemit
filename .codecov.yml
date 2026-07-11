@@ -22,7 +22,7 @@ coverage:
   status:
     project:
       default:
-        target: auto
+        target: 90%
         threshold: 1%
         flags:
           - x86_native
@@ -32,7 +32,7 @@ coverage:
           - aarch64_sve
     patch:
       default:
-        target: 70%
+        target: 90%
 
 ignore:
   - ".*/tests/.*"

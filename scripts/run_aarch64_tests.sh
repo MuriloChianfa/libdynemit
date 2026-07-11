@@ -27,12 +27,7 @@ if ! docker info >/dev/null 2>&1; then
     exit 1
 fi
 
-IMAGE="$("$ROOT/scripts/ensure_docker_coverage_aarch64.sh")"
-
-if ! docker run --rm --platform linux/arm64 "$IMAGE" uname -m >/dev/null 2>&1; then
-    echo "Registering QEMU binfmt for linux/arm64 Docker..."
-    docker run --rm --privileged multiarch/qemu-user-static --reset -p yes >/dev/null
-fi
+IMAGE="$("$ROOT/scripts/ensure_docker_image_cache.sh" coverage-aarch64)"
 
 COVERAGE_FLAG=""
 [[ "$COVERAGE" -eq 1 ]] && COVERAGE_FLAG="-DDYNEMIT_COVERAGE=ON"

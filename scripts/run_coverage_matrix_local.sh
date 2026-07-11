@@ -3,8 +3,9 @@
 #
 # Usage: ./scripts/run_coverage_matrix_local.sh [--skip-sde] [--skip-aarch64]
 #
-# x86 legs run natively. aarch64 legs run inside Docker (linux/arm64).
-# SDE is downloaded on first use (~100 MB) unless --skip-sde.
+# x86-native / x86-ts run on the host. x86-sde and aarch64 legs use cached Docker
+# images when the daemon is available (see scripts/ensure_docker_image_cache.sh).
+# Without Docker, x86-sde falls back to scripts/install_intel_sde.sh on the host.
 
 set -euo pipefail
 
@@ -72,25 +73,45 @@ run_x86_leg "x86-ts" "build-cov-x86-ts" -DDYNEMIT_TS=ON
 if [[ "$SKIP_SDE" -eq 0 ]]; then
     echo ""
     echo "========== x86-sde (Intel SDE) =========="
-    SDE_ROOT="${SDE_ROOT:-/tmp/intel-sde}"
-    if [[ ! -x "${SDE_BIN:-}" ]]; then
-        if ! ./scripts/install_intel_sde.sh "$SDE_ROOT"; then
-            echo "WARNING: SDE install failed; skipping x86-sde leg." >&2
-            SDE_BIN=""
-        else
-            SDE_BIN="$(find "$SDE_ROOT" -type f -name sde64 -print -quit)"
-        fi
-    fi
-    if [[ -n "${SDE_BIN:-}" && -x "$SDE_BIN" ]]; then
-        export SDE_BIN
-        echo "Using SDE: $SDE_BIN"
-        "$SDE_BIN" -spr -- ./build-cov-x86-native/dynemit_simd_level_probe 5
-
-        cmake -B build-cov-x86-sde -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON \
-            "-DDYNEMIT_COVERAGE_TEST_WRAPPER=${SDE_BIN} -spr --"
-        cmake --build build-cov-x86-sde -j"$(nproc)"
-        cmake --build build-cov-x86-sde --target coverage
+    if [[ "$HOST_ARCH" == "x86_64" ]] && docker info >/dev/null 2>&1; then
+        SDE_IMAGE="$("$ROOT/scripts/ensure_docker_image_cache.sh" coverage-x86-sde)"
+        echo "Using Docker image: $SDE_IMAGE"
+        docker run --rm --platform linux/amd64 \
+            -v "$ROOT:/work" -w /work \
+            "$SDE_IMAGE" bash -euxo pipefail -c '
+                uid='"$(id -u)"'
+                gid='"$(id -g)"'
+                chown -R "$uid:$gid" /work/build-cov-x86-sde 2>/dev/null || true
+                rm -rf build-cov-x86-sde
+                "$SDE_BIN" -spr -- ./build-cov-x86-native/dynemit_simd_level_probe 5
+                cmake -B build-cov-x86-sde -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON \
+                    "-DDYNEMIT_COVERAGE_TEST_WRAPPER=${SDE_BIN} -spr --"
+                cmake --build build-cov-x86-sde -j"$(nproc)"
+                cmake --build build-cov-x86-sde --target coverage
+                chown -R "$uid:$gid" /work/build-cov-x86-sde
+            '
         summarize_coverage "build-cov-x86-sde/coverage.info" "x86-sde"
+    else
+        SDE_ROOT="${SDE_ROOT:-/tmp/intel-sde}"
+        if [[ ! -x "${SDE_BIN:-}" ]]; then
+            if ! ./scripts/install_intel_sde.sh "$SDE_ROOT"; then
+                echo "WARNING: SDE install failed; skipping x86-sde leg." >&2
+                SDE_BIN=""
+            else
+                SDE_BIN="$(find "$SDE_ROOT" -type f -name sde64 -print -quit)"
+            fi
+        fi
+        if [[ -n "${SDE_BIN:-}" && -x "$SDE_BIN" ]]; then
+            export SDE_BIN
+            echo "Using host SDE: $SDE_BIN"
+            "$SDE_BIN" -spr -- ./build-cov-x86-native/dynemit_simd_level_probe 5
+
+            cmake -B build-cov-x86-sde -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON \
+                "-DDYNEMIT_COVERAGE_TEST_WRAPPER=${SDE_BIN} -spr --"
+            cmake --build build-cov-x86-sde -j"$(nproc)"
+            cmake --build build-cov-x86-sde --target coverage
+            summarize_coverage "build-cov-x86-sde/coverage.info" "x86-sde"
+        fi
     fi
 else
     echo ""
@@ -99,12 +120,7 @@ fi
 
 # --- aarch64 via Docker (cached toolchain image, single container for both legs) ---
 if [[ "$SKIP_AARCH64" -eq 0 ]] && docker info >/dev/null 2>&1; then
-    AARCH64_IMAGE="$("$ROOT/scripts/ensure_docker_coverage_aarch64.sh")"
-
-    if ! docker run --rm --platform linux/arm64 "$AARCH64_IMAGE" uname -m >/dev/null 2>&1; then
-        echo "Registering QEMU binfmt for linux/arm64 Docker..."
-        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes >/dev/null
-    fi
+    AARCH64_IMAGE="$("$ROOT/scripts/ensure_docker_image_cache.sh" coverage-aarch64)"
 
     echo ""
     echo "========== aarch64-native + aarch64-sve (Docker $AARCH64_IMAGE) =========="
