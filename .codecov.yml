@@ -33,12 +33,11 @@ coverage:
         target: 70%
 
 ignore:
-  - "tests/"
-  - "bench/"
-  - "docs/"
-  - "scripts/"
-  - "cmake/"
-  - "include/"
-  - "features/*/tests/"
-  - "features/*/benchmarks/"
+  - "**/tests/**"
+  - "**/benchmarks/**"
+  - "bench/**"
+  - "docs/**"
+  - "scripts/**"
+  - "cmake/**"
+  - "include/**"
   - "src/dynemit_features.c"

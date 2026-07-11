@@ -45,6 +45,7 @@ if(DYNEMIT_COVERAGE)
                 ${LCOV_IGNORE}
         COMMAND ${LCOV} --remove coverage_extracted.info
                 "*/features/*/tests/*"
+                "*/features/*/benchmarks/*"
                 "*/_deps/*"
                 --output-file coverage.info
                 --rc branch_coverage=1
