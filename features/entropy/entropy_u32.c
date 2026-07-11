@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
 #include "fast_log2.h"
+#include "mem.h"
+#include <dynemit/compiler.h>
+#include <dynemit/entropy.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <dynemit/compiler.h>
-#include <dynemit/entropy.h>
-#include "mem.h"
 
 static int
 cmp_u32(const void *a, const void *b)
@@ -28,9 +28,13 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 entropy_u32_scalar(const uint32_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     uint32_t *sorted = malloc(n * sizeof(uint32_t));
-    if (!sorted) return 0.0;
+    if (!sorted) {
+        return 0.0;
+    }
     if (memcpys(sorted, n * sizeof(uint32_t), data,
                          n * sizeof(uint32_t)) != 0) {
         free(sorted);
@@ -80,22 +84,23 @@ DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
  * Open-addressing with multiplicative hash, power-of-2 capacity, load factor < 50%.
  */
 
-#define HT_MULTIPLIER 2654435769u
+#define HT_MULTIPLIER 2654435769U
 
 static size_t
 ht_build(const uint32_t *data, size_t n,
          uint32_t *ht_keys, uint32_t *ht_counts,
          size_t cap)
 {
-    unsigned shift = 32u - (unsigned)__builtin_ctz((unsigned)cap);
+    unsigned shift = 32U - (unsigned)__builtin_ctz((unsigned)cap);
     uint32_t mask = (uint32_t)(cap - 1);
     size_t ndistinct = 0;
 
     for (size_t i = 0; i < n; i++) {
         uint32_t val = data[i];
         uint32_t h = (val * HT_MULTIPLIER) >> shift;
-        while (ht_counts[h] != 0 && ht_keys[h] != val)
+        while (ht_counts[h] != 0 && ht_keys[h] != val) {
             h = (h + 1) & mask;
+        }
         if (ht_counts[h] == 0) {
             ht_keys[h] = val;
             ndistinct++;
@@ -109,9 +114,11 @@ static size_t
 ht_compact_counts(uint32_t *ht_counts, size_t cap)
 {
     size_t ndirty = 0;
-    for (size_t i = 0; i < cap; i++)
-        if (ht_counts[i] != 0)
+    for (size_t i = 0; i < cap; i++) {
+        if (ht_counts[i] != 0) {
             ht_counts[ndirty++] = ht_counts[i];
+        }
+    }
     return ndirty;
 }
 
@@ -119,10 +126,14 @@ __attribute__((target("sse2")))
 static double
 entropy_u32_sse2(const uint32_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
 
     size_t cap = 16;
-    while (cap < 2 * n) cap <<= 1;
+    while (cap < 2 * n) {
+        cap <<= 1;
+    }
 
     uint32_t *ht_keys   = calloc(cap, sizeof(uint32_t));
     uint32_t *ht_counts = calloc(cap, sizeof(uint32_t));
@@ -170,10 +181,14 @@ __attribute__((target("avx")))
 static double
 entropy_u32_avx(const uint32_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
 
     size_t cap = 16;
-    while (cap < 2 * n) cap <<= 1;
+    while (cap < 2 * n) {
+        cap <<= 1;
+    }
 
     uint32_t *ht_keys   = calloc(cap, sizeof(uint32_t));
     uint32_t *ht_counts = calloc(cap, sizeof(uint32_t));
@@ -216,10 +231,14 @@ __attribute__((target("avx2,fma")))
 static double
 entropy_u32_avx2(const uint32_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
 
     size_t cap = 16;
-    while (cap < 2 * n) cap <<= 1;
+    while (cap < 2 * n) {
+        cap <<= 1;
+    }
 
     uint32_t *ht_keys   = calloc(cap, sizeof(uint32_t));
     uint32_t *ht_counts = calloc(cap, sizeof(uint32_t));
@@ -262,10 +281,14 @@ __attribute__((target("avx512f")))
 static double
 entropy_u32_avx512f(const uint32_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
 
     size_t cap = 16;
-    while (cap < 2 * n) cap <<= 1;
+    while (cap < 2 * n) {
+        cap <<= 1;
+    }
 
     uint32_t *ht_keys   = calloc(cap, sizeof(uint32_t));
     uint32_t *ht_counts = calloc(cap, sizeof(uint32_t));
@@ -281,7 +304,12 @@ entropy_u32_avx512f(const uint32_t *data, size_t n)
         __m512i v  = _mm512_loadu_si512(ht_counts + j);
         __mmask16 nz = _mm512_cmpneq_epi32_mask(v, vzero);
         _mm512_mask_compressstoreu_epi32(ht_counts + ndirty, nz, v);
-        ndirty += (size_t)_mm_popcnt_u32((unsigned)nz);
+        ndirty += (size_t)_mm_popcnt_u32((unsigned)nz & 0xffffU);
+    }
+
+    /* popcnt of a 16-bit mask is <= 16 per iteration. Clamp to cap. */
+    if (ndirty > cap) {
+        ndirty = cap;
     }
 
     double inv_n = 1.0 / (double)n;
@@ -317,7 +345,7 @@ entropy_u32_avx512f(const uint32_t *data, size_t n)
 
 #endif /* x86 */
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 entropy_u32_neon(const uint32_t *data, size_t n)
@@ -353,14 +381,14 @@ entropy_u32_select(simd_level_t level)
     case SIMD_SSE4_2:  return entropy_u32_sse42;
     case SIMD_SSE2:    return entropy_u32_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return entropy_u32_sve2;
     case SIMD_SVE:     return entropy_u32_sve;
     case SIMD_NEON:    return entropy_u32_neon;
 #endif
     case SIMD_SCALAR:
     default:           return entropy_u32_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(entropy_u32_resolver, entropy_u32_fn_t)
@@ -370,7 +398,7 @@ EXPLICIT_RUNTIME_RESOLVER(entropy_u32_resolver, entropy_u32_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double entropy_u32(const uint32_t *data, size_t n)

@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSL-1.0 */
-#include <stddef.h>
-#include <stdint.h>
 #include <dynemit/compiler.h>
 #include <dynemit/concentration.h>
 #include <dynemit/hhi.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /*
  * Composite concentration analysis.
@@ -79,7 +79,7 @@ concentration_f64_avx512f(const uint64_t *sorted_counts_desc, size_t n,
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static void
 concentration_f64_neon(const uint64_t *sorted_counts_desc, size_t n,
@@ -124,14 +124,14 @@ concentration_f64_select(simd_level_t level)
     case SIMD_SSE4_2:  return concentration_f64_sse42;
     case SIMD_SSE2:    return concentration_f64_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return concentration_f64_sve2;
     case SIMD_SVE:     return concentration_f64_sve;
     case SIMD_NEON:    return concentration_f64_neon;
 #endif
     case SIMD_SCALAR:
     default:           return concentration_f64_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(concentration_f64_resolver, concentration_f64_fn_t)
@@ -141,7 +141,7 @@ EXPLICIT_RUNTIME_RESOLVER(concentration_f64_resolver, concentration_f64_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 void concentration_f64(const uint64_t *sorted_counts_desc, size_t n,

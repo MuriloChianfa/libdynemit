@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include <dynemit/compiler.h>
+#include <dynemit/max.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <dynemit/max.h>
-#include <dynemit/compiler.h>
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -17,11 +17,16 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 max_u64_scalar(const uint64_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     uint64_t result = data[0];
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 1; i < n; i++)
-        if (data[i] > result) result = data[i];
+    for (size_t i = 1; i < n; i++) {
+        if (data[i] > result) {
+            result = data[i];
+        }
+    }
     return (double)result;
 }
 
@@ -59,20 +64,26 @@ __attribute__((target("avx512f")))
 static double
 max_u64_avx512f(const uint64_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     size_t i = 0;
     __m512i vmax = _mm512_setzero_si512();
-    for (; i + 8 <= n; i += 8)
+    for (; i + 8 <= n; i += 8) {
         vmax = _mm512_max_epu64(vmax, _mm512_loadu_si512(data + i));
+    }
     uint64_t result = _mm512_reduce_max_epu64(vmax);
-    for (; i < n; i++)
-        if (data[i] > result) result = data[i];
+    for (; i < n; i++) {
+        if (data[i] > result) {
+            result = data[i];
+        }
+    }
     return (double)result;
 }
 
 #endif /* x86 */
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 max_u64_neon(const uint64_t *data, size_t n)
@@ -134,14 +145,14 @@ max_u64_select(simd_level_t level)
     case SIMD_SSE4_2:  return max_u64_sse42;
     case SIMD_SSE2:    return max_u64_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return max_u64_sve2;
     case SIMD_SVE:     return max_u64_sve;
     case SIMD_NEON:    return max_u64_neon;
 #endif
     case SIMD_SCALAR:
     default:           return max_u64_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(max_u64_resolver, max_u64_fn_t)
@@ -151,7 +162,7 @@ EXPLICIT_RUNTIME_RESOLVER(max_u64_resolver, max_u64_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double max_u64(const uint64_t *data, size_t n)

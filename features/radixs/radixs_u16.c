@@ -1,18 +1,20 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include "mem.h"
+#include <dynemit/compiler.h>
+#include <dynemit/radixs.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <dynemit/radixs.h>
-#include <dynemit/compiler.h>
-#include "mem.h"
 
-#define RADIXS_U16_BUCKETS 65536u
+enum {
+    RADIXS_U16_BUCKETS = 65536U
+};
 
 /*
  * Allocate a 65536-entry uint32_t histogram on the heap (256 KB), aligned
@@ -27,7 +29,7 @@ radixs_u16_alloc_counts(void)
         if (memsets(p, RADIXS_U16_BUCKETS * sizeof(uint32_t), 0,
                              RADIXS_U16_BUCKETS * sizeof(uint32_t)) != 0) {
             free(p);
-            return NULL;
+            return nullptr;
         }
     }
     return (uint32_t *)p;
@@ -46,8 +48,9 @@ radixs_u16_qsort_fallback(const uint16_t *in, uint16_t *out, size_t n)
 {
     if (in != out) {
         if (memcpys(out, n * sizeof(uint16_t), in,
-                             n * sizeof(uint16_t)) != 0)
+                             n * sizeof(uint16_t)) != 0) {
             return;
+        }
     }
     qsort(out, n, sizeof(uint16_t), radixs_u16_cmp);
 }
@@ -59,7 +62,9 @@ DYNEMIT_NO_AUTOVECTORIZE
 static void
 radixs_u16_scalar(const uint16_t *in, uint16_t *out, size_t n)
 {
-    if (n == 0) return;
+    if (n == 0) {
+        return;
+    }
 
     uint32_t *counts = radixs_u16_alloc_counts();
     if (!counts) {
@@ -68,15 +73,17 @@ radixs_u16_scalar(const uint16_t *in, uint16_t *out, size_t n)
     }
 
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         counts[in[i]]++;
+    }
 
     size_t pos = 0;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (uint32_t v = 0; v < RADIXS_U16_BUCKETS; v++) {
         uint32_t c = counts[v];
-        for (uint32_t k = 0; k < c; k++)
+        for (uint32_t k = 0; k < c; k++) {
             out[pos++] = (uint16_t)v;
+        }
     }
 
     free(counts);
@@ -96,17 +103,21 @@ radixs_u16_fill_sse2(uint16_t *out, uint16_t v, uint32_t c)
 {
     __m128i vv = _mm_set1_epi16((short)v);
     uint32_t i = 0;
-    for (; i + 8 <= c; i += 8)
+    for (; i + 8 <= c; i += 8) {
         _mm_storeu_si128((__m128i *)(out + i), vv);
-    for (; i < c; i++)
+    }
+    for (; i < c; i++) {
         out[i] = v;
+    }
 }
 
 __attribute__((target("sse2")))
 static void
 radixs_u16_sse2(const uint16_t *in, uint16_t *out, size_t n)
 {
-    if (n == 0) return;
+    if (n == 0) {
+        return;
+    }
 
     uint32_t *counts = radixs_u16_alloc_counts();
     if (!counts) {
@@ -114,13 +125,16 @@ radixs_u16_sse2(const uint16_t *in, uint16_t *out, size_t n)
         return;
     }
 
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         counts[in[i]]++;
+    }
 
     size_t pos = 0;
     for (uint32_t v = 0; v < RADIXS_U16_BUCKETS; v++) {
         uint32_t c = counts[v];
-        if (c == 0) continue;
+        if (c == 0) {
+            continue;
+        }
         radixs_u16_fill_sse2(out + pos, (uint16_t)v, c);
         pos += c;
     }
@@ -148,22 +162,26 @@ radixs_u16_fill_avx2(uint16_t *out, uint16_t v, uint32_t c)
 {
     __m256i vv = _mm256_set1_epi16((short)v);
     uint32_t i = 0;
-    for (; i + 16 <= c; i += 16)
+    for (; i + 16 <= c; i += 16) {
         _mm256_storeu_si256((__m256i *)(out + i), vv);
+    }
     if (i + 8 <= c) {
         __m128i vv128 = _mm_set1_epi16((short)v);
         _mm_storeu_si128((__m128i *)(out + i), vv128);
         i += 8;
     }
-    for (; i < c; i++)
+    for (; i < c; i++) {
         out[i] = v;
+    }
 }
 
 __attribute__((target("avx2")))
 static void
 radixs_u16_avx2(const uint16_t *in, uint16_t *out, size_t n)
 {
-    if (n == 0) return;
+    if (n == 0) {
+        return;
+    }
 
     uint32_t *counts = radixs_u16_alloc_counts();
     if (!counts) {
@@ -183,7 +201,7 @@ radixs_u16_avx2(const uint16_t *in, uint16_t *out, size_t n)
         if (memsets(counts1, RADIXS_U16_BUCKETS * sizeof(uint32_t), 0,
                              RADIXS_U16_BUCKETS * sizeof(uint32_t)) != 0) {
             free(counts1);
-            counts1 = NULL;
+            counts1 = nullptr;
         }
     }
     if (counts1) {
@@ -192,20 +210,25 @@ radixs_u16_avx2(const uint16_t *in, uint16_t *out, size_t n)
             counts0[in[i]]++;
             counts1[in[i + 1]]++;
         }
-        for (; i < n; i++)
+        for (; i < n; i++) {
             counts0[in[i]]++;
-        for (uint32_t v = 0; v < RADIXS_U16_BUCKETS; v++)
+        }
+        for (uint32_t v = 0; v < RADIXS_U16_BUCKETS; v++) {
             counts0[v] += counts1[v];
+        }
         free(counts1);
     } else {
-        for (size_t i = 0; i < n; i++)
+        for (size_t i = 0; i < n; i++) {
             counts0[in[i]]++;
+        }
     }
 
     size_t pos = 0;
     for (uint32_t v = 0; v < RADIXS_U16_BUCKETS; v++) {
         uint32_t c = counts0[v];
-        if (c == 0) continue;
+        if (c == 0) {
+            continue;
+        }
         radixs_u16_fill_avx2(out + pos, (uint16_t)v, c);
         pos += c;
     }
@@ -219,11 +242,12 @@ radixs_u16_fill_avx512(uint16_t *out, uint16_t v, uint32_t c)
 {
     __m512i vv = _mm512_set1_epi16((short)v);
     uint32_t i = 0;
-    for (; i + 32 <= c; i += 32)
+    for (; i + 32 <= c; i += 32) {
         _mm512_storeu_si512((__m512i *)(out + i), vv);
+    }
     if (i < c) {
         uint32_t rem = c - i;
-        __mmask32 m = (__mmask32)((1u << rem) - 1u);
+        __mmask32 m = (__mmask32)((1U << rem) - 1U);
         _mm512_mask_storeu_epi16(out + i, m, vv);
     }
 }
@@ -232,7 +256,9 @@ __attribute__((target("avx512f,avx512bw")))
 static void
 radixs_u16_avx512f(const uint16_t *in, uint16_t *out, size_t n)
 {
-    if (n == 0) return;
+    if (n == 0) {
+        return;
+    }
 
     uint32_t *counts = radixs_u16_alloc_counts();
     if (!counts) {
@@ -240,13 +266,16 @@ radixs_u16_avx512f(const uint16_t *in, uint16_t *out, size_t n)
         return;
     }
 
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         counts[in[i]]++;
+    }
 
     size_t pos = 0;
     for (uint32_t v = 0; v < RADIXS_U16_BUCKETS; v++) {
         uint32_t c = counts[v];
-        if (c == 0) continue;
+        if (c == 0) {
+            continue;
+        }
         radixs_u16_fill_avx512(out + pos, (uint16_t)v, c);
         pos += c;
     }
@@ -269,7 +298,7 @@ radixs_u16_avx512_vbmi2(const uint16_t *in, uint16_t *out, size_t n)
 
 #endif /* x86 */
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static inline void
 radixs_u16_fill_neon(uint16_t *out, uint16_t v, uint32_t c)
@@ -369,14 +398,14 @@ radixs_u16_select(simd_level_t level)
     case SIMD_SSE4_2:  return radixs_u16_sse42;
     case SIMD_SSE2:    return radixs_u16_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return radixs_u16_sve2;
     case SIMD_SVE:     return radixs_u16_sve;
     case SIMD_NEON:    return radixs_u16_neon;
 #endif
     case SIMD_SCALAR:
     default:           return radixs_u16_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(radixs_u16_resolver, radixs_u16_fn_t)
@@ -386,7 +415,7 @@ EXPLICIT_RUNTIME_RESOLVER(radixs_u16_resolver, radixs_u16_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512vbmi2,avx512vbmi,avx512bw,avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 void radixs_u16(const uint16_t *in, uint16_t *out, size_t n)

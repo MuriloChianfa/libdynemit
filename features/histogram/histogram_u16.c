@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include "mem.h"
+#include <dynemit/compiler.h>
+#include <dynemit/histogram.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <dynemit/histogram.h>
-#include <dynemit/compiler.h>
-#include "mem.h"
 
 /*
  * Count elements falling into ranges defined by boundaries.
@@ -33,8 +33,9 @@ histogram_u16_scalar(const uint16_t *data, size_t n,
                            uint64_t *out)
 {
     if (memsets(out, (num_boundaries + 1) * sizeof(uint64_t), 0,
-                         (num_boundaries + 1) * sizeof(uint64_t)) != 0)
+                         (num_boundaries + 1) * sizeof(uint64_t)) != 0) {
         return;
+    }
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
         uint16_t val = data[i];
@@ -91,8 +92,9 @@ histogram_u16_avx2(const uint16_t *data, size_t n,
      * Count how many elements are >= each boundary to determine bucket.
      */
     if (memsets(out, (num_boundaries + 1) * sizeof(uint64_t), 0,
-                         (num_boundaries + 1) * sizeof(uint64_t)) != 0)
+                         (num_boundaries + 1) * sizeof(uint64_t)) != 0) {
         return;
+    }
     if (num_boundaries == 0) {
         out[0] = n;
         return;
@@ -107,8 +109,9 @@ histogram_u16_avx2(const uint16_t *data, size_t n,
         histogram_u16_scalar(data, n, boundaries, num_boundaries, out);
         return;
     }
-    for (size_t b = 0; b < num_boundaries; b++)
+    for (size_t b = 0; b < num_boundaries; b++) {
         vbounds[b] = _mm256_add_epi16(_mm256_set1_epi16((short)boundaries[b]), bias);
+    }
 
     /*
      * For each group of 16 elements, count how many fall below each boundary.
@@ -131,8 +134,9 @@ histogram_u16_avx2(const uint16_t *data, size_t n,
         /* Extract buckets and increment counts */
         alignas(32) uint16_t buckets[16];
         _mm256_storeu_si256((__m256i *)buckets, vbucket);
-        for (size_t j = 0; j < 16; j++)
+        for (size_t j = 0; j < 16; j++) {
             out[buckets[j]]++;
+        }
     }
 
     /* Scalar tail */
@@ -162,7 +166,7 @@ histogram_u16_avx512f(const uint16_t *data, size_t n,
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static void
 histogram_u16_neon(const uint16_t *data, size_t n,
@@ -204,14 +208,14 @@ histogram_u16_select(simd_level_t level)
     case SIMD_SSE4_2:  return histogram_u16_sse42;
     case SIMD_SSE2:    return histogram_u16_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return histogram_u16_sve2;
     case SIMD_SVE:     return histogram_u16_sve;
     case SIMD_NEON:    return histogram_u16_neon;
 #endif
     case SIMD_SCALAR:
     default:           return histogram_u16_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(histogram_u16_resolver, histogram_u16_fn_t)
@@ -221,7 +225,7 @@ EXPLICIT_RUNTIME_RESOLVER(histogram_u16_resolver, histogram_u16_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 void histogram_u16(const uint16_t *data, size_t n,

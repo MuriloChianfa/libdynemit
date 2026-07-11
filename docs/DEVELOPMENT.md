@@ -86,15 +86,16 @@ cmake -B build-tidy -DCMAKE_BUILD_TYPE=Debug \
 ```
 
 Run clang-tidy on feature implementations only (excludes `tests/` and
-`benchmarks/` subdirectories):
+`benchmarks/` subdirectories). Checks come from the root `.clang-tidy`
+(performance, bugprone, clang-analyzer, plus a small mechanical style set):
 
 ```bash
-run-clang-tidy-21 -p build-tidy -checks='performance-*' -header-filter=.* 'features/[^/]+/[^/]+\.c'
+run-clang-tidy-21 -p build-tidy 'features/[^/]+/[^/]+\.c'
 ```
 
 Feature code uses `memcpys` / `memsets` and `mem_aligned_count()` from `"mem.h"` (under `src/`) instead of raw libc `memcpy`/`memset`.
 
-This check also runs in CI (see the `clang-tidy-performance` job in `.github/workflows/ci.yml`).
+This also runs in CI (see the `clang-tidy` job in `.github/workflows/ci.yml`).
 
 ## Mutation Testing (Mull)
 

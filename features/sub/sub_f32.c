@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
-#include <stddef.h>
-#include <dynemit/sub.h>
 #include <dynemit/compiler.h>
+#include <dynemit/sub.h>
+#include <stddef.h>
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -17,8 +17,9 @@ static void
 sub_f32_scalar(const float *a, const float *b, float *out, size_t n)
 {
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         out[i] = a[i] - b[i];
+    }
 }
 
 
@@ -35,8 +36,9 @@ sub_f32_sse2(const float *a, const float *b, float *out, size_t n)
         __m128 vc = _mm_sub_ps(va, vb);
         _mm_storeu_ps(out + i, vc);
     }
-    for (; i < n; i++)
+    for (; i < n; i++) {
         out[i] = a[i] - b[i];
+    }
 }
 
 __attribute__((target("sse4.2")))
@@ -51,8 +53,9 @@ sub_f32_sse42(const float *a, const float *b, float *out, size_t n)
         __m128 vc = _mm_sub_ps(va, vb);
         _mm_storeu_ps(out + i, vc);
     }
-    for (; i < n; i++)
+    for (; i < n; i++) {
         out[i] = a[i] - b[i];
+    }
 }
 
 __attribute__((target("avx")))
@@ -67,8 +70,9 @@ sub_f32_avx(const float *a, const float *b, float *out, size_t n)
         __m256 vc = _mm256_sub_ps(va, vb);
         _mm256_storeu_ps(out + i, vc);
     }
-    for (; i < n; i++)
+    for (; i < n; i++) {
         out[i] = a[i] - b[i];
+    }
 }
 
 __attribute__((target("avx2")))
@@ -83,8 +87,9 @@ sub_f32_avx2(const float *a, const float *b, float *out, size_t n)
         __m256 vc = _mm256_sub_ps(va, vb);
         _mm256_storeu_ps(out + i, vc);
     }
-    for (; i < n; i++)
+    for (; i < n; i++) {
         out[i] = a[i] - b[i];
+    }
 }
 
 __attribute__((target("avx512f")))
@@ -99,12 +104,13 @@ sub_f32_avx512f(const float *a, const float *b, float *out, size_t n)
         __m512 vc = _mm512_sub_ps(va, vb);
         _mm512_storeu_ps(out + i, vc);
     }
-    for (; i < n; i++)
+    for (; i < n; i++) {
         out[i] = a[i] - b[i];
+    }
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static void
 sub_f32_neon(const float *a, const float *b, float *out, size_t n)
@@ -173,14 +179,14 @@ sub_f32_select(simd_level_t level)
     case SIMD_SSE4_2:  return sub_f32_sse42;
     case SIMD_SSE2:    return sub_f32_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return sub_f32_sve2;
     case SIMD_SVE:     return sub_f32_sve;
     case SIMD_NEON:    return sub_f32_neon;
 #endif
     case SIMD_SCALAR:
     default:           return sub_f32_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(sub_f32_resolver, sub_f32_fn_t)
@@ -190,7 +196,7 @@ EXPLICIT_RUNTIME_RESOLVER(sub_f32_resolver, sub_f32_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 void sub_f32(const float *a, const float *b, float *out, size_t n)

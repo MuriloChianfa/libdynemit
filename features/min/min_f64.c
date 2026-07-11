@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include <dynemit/compiler.h>
+#include <dynemit/min.h>
+#include <float.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <float.h>
-#include <dynemit/min.h>
-#include <dynemit/compiler.h>
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -18,11 +18,16 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 min_f64_scalar(const double *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     double result = data[0];
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 1; i < n; i++)
-        if (data[i] < result) result = data[i];
+    for (size_t i = 1; i < n; i++) {
+        if (data[i] < result) {
+            result = data[i];
+        }
+    }
     return result;
 }
 
@@ -32,16 +37,22 @@ __attribute__((target("sse2")))
 static double
 min_f64_sse2(const double *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     size_t i = 0;
     __m128d vmin = _mm_set1_pd(DBL_MAX);
-    for (; i + 2 <= n; i += 2)
+    for (; i + 2 <= n; i += 2) {
         vmin = _mm_min_pd(vmin, _mm_loadu_pd(data + i));
+    }
     __m128d hi = _mm_unpackhi_pd(vmin, vmin);
     vmin = _mm_min_pd(vmin, hi);
     double result = _mm_cvtsd_f64(vmin);
-    for (; i < n; i++)
-        if (data[i] < result) result = data[i];
+    for (; i < n; i++) {
+        if (data[i] < result) {
+            result = data[i];
+        }
+    }
     return result;
 }
 
@@ -49,16 +60,22 @@ __attribute__((target("sse4.2")))
 static double
 min_f64_sse42(const double *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     size_t i = 0;
     __m128d vmin = _mm_set1_pd(DBL_MAX);
-    for (; i + 2 <= n; i += 2)
+    for (; i + 2 <= n; i += 2) {
         vmin = _mm_min_pd(vmin, _mm_loadu_pd(data + i));
+    }
     __m128d hi = _mm_unpackhi_pd(vmin, vmin);
     vmin = _mm_min_pd(vmin, hi);
     double result = _mm_cvtsd_f64(vmin);
-    for (; i < n; i++)
-        if (data[i] < result) result = data[i];
+    for (; i < n; i++) {
+        if (data[i] < result) {
+            result = data[i];
+        }
+    }
     return result;
 }
 
@@ -66,19 +83,25 @@ __attribute__((target("avx")))
 static double
 min_f64_avx(const double *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     size_t i = 0;
     __m256d vmin = _mm256_set1_pd(DBL_MAX);
-    for (; i + 4 <= n; i += 4)
+    for (; i + 4 <= n; i += 4) {
         vmin = _mm256_min_pd(vmin, _mm256_loadu_pd(data + i));
+    }
     __m128d lo = _mm256_castpd256_pd128(vmin);
     __m128d hi = _mm256_extractf128_pd(vmin, 1);
     __m128d m  = _mm_min_pd(lo, hi);
     __m128d mh = _mm_unpackhi_pd(m, m);
     m = _mm_min_pd(m, mh);
     double result = _mm_cvtsd_f64(m);
-    for (; i < n; i++)
-        if (data[i] < result) result = data[i];
+    for (; i < n; i++) {
+        if (data[i] < result) {
+            result = data[i];
+        }
+    }
     return result;
 }
 
@@ -86,19 +109,25 @@ __attribute__((target("avx2")))
 static double
 min_f64_avx2(const double *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     size_t i = 0;
     __m256d vmin = _mm256_set1_pd(DBL_MAX);
-    for (; i + 4 <= n; i += 4)
+    for (; i + 4 <= n; i += 4) {
         vmin = _mm256_min_pd(vmin, _mm256_loadu_pd(data + i));
+    }
     __m128d lo = _mm256_castpd256_pd128(vmin);
     __m128d hi = _mm256_extractf128_pd(vmin, 1);
     __m128d m  = _mm_min_pd(lo, hi);
     __m128d mh = _mm_unpackhi_pd(m, m);
     m = _mm_min_pd(m, mh);
     double result = _mm_cvtsd_f64(m);
-    for (; i < n; i++)
-        if (data[i] < result) result = data[i];
+    for (; i < n; i++) {
+        if (data[i] < result) {
+            result = data[i];
+        }
+    }
     return result;
 }
 
@@ -106,19 +135,25 @@ __attribute__((target("avx512f")))
 static double
 min_f64_avx512f(const double *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     size_t i = 0;
     __m512d vmin = _mm512_set1_pd(DBL_MAX);
-    for (; i + 8 <= n; i += 8)
+    for (; i + 8 <= n; i += 8) {
         vmin = _mm512_min_pd(vmin, _mm512_loadu_pd(data + i));
+    }
     double result = _mm512_reduce_min_pd(vmin);
-    for (; i < n; i++)
-        if (data[i] < result) result = data[i];
+    for (; i < n; i++) {
+        if (data[i] < result) {
+            result = data[i];
+        }
+    }
     return result;
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 min_f64_neon(const double *data, size_t n)
@@ -190,14 +225,14 @@ min_f64_select(simd_level_t level)
     case SIMD_SSE4_2:  return min_f64_sse42;
     case SIMD_SSE2:    return min_f64_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return min_f64_sve2;
     case SIMD_SVE:     return min_f64_sve;
     case SIMD_NEON:    return min_f64_neon;
 #endif
     case SIMD_SCALAR:
     default:           return min_f64_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(min_f64_resolver, min_f64_fn_t)
@@ -207,7 +242,7 @@ EXPLICIT_RUNTIME_RESOLVER(min_f64_resolver, min_f64_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double min_f64(const double *data, size_t n)

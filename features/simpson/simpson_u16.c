@@ -1,16 +1,16 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include "mem.h"
+#include <dynemit/compiler.h>
+#include <dynemit/simpson.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <dynemit/simpson.h>
-#include <dynemit/compiler.h>
-#include "mem.h"
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -19,18 +19,24 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 simpson_u16_scalar(const uint16_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
-    uint64_t hist[65536];
-    if (memsets(hist, sizeof(hist), 0, sizeof(hist)) != 0)
+    if (n == 0) {
         return 0.0;
+    }
+    uint64_t hist[65536];
+    if (memsets(hist, sizeof(hist), 0, sizeof(hist)) != 0) {
+        return 0.0;
+    }
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         hist[data[i]]++;
+    }
     double total = (double)n;
     double sum_sq = 0.0;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < 65536; i++) {
-        if (hist[i] == 0) continue;
+        if (hist[i] == 0) {
+            continue;
+        }
         double p = (double)hist[i] / total;
         sum_sq += p * p;
     }
@@ -43,12 +49,16 @@ __attribute__((target("sse2")))
 static double
 simpson_u16_sse2(const uint16_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
-    uint64_t hist[65536];
-    if (memsets(hist, sizeof(hist), 0, sizeof(hist)) != 0)
+    if (n == 0) {
         return 0.0;
-    for (size_t i = 0; i < n; i++)
+    }
+    uint64_t hist[65536];
+    if (memsets(hist, sizeof(hist), 0, sizeof(hist)) != 0) {
+        return 0.0;
+    }
+    for (size_t i = 0; i < n; i++) {
         hist[data[i]]++;
+    }
     double total = (double)n;
     __m128d vtotal = _mm_set1_pd(total);
     __m128d vsum = _mm_setzero_pd();
@@ -74,12 +84,16 @@ __attribute__((target("avx")))
 static double
 simpson_u16_avx(const uint16_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
-    uint64_t hist[65536];
-    if (memsets(hist, sizeof(hist), 0, sizeof(hist)) != 0)
+    if (n == 0) {
         return 0.0;
-    for (size_t i = 0; i < n; i++)
+    }
+    uint64_t hist[65536];
+    if (memsets(hist, sizeof(hist), 0, sizeof(hist)) != 0) {
+        return 0.0;
+    }
+    for (size_t i = 0; i < n; i++) {
         hist[data[i]]++;
+    }
     double total = (double)n;
     __m256d vtotal = _mm256_set1_pd(total);
     __m256d vsum = _mm256_setzero_pd();
@@ -110,12 +124,16 @@ __attribute__((target("avx512f")))
 static double
 simpson_u16_avx512f(const uint16_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
-    uint64_t hist[65536];
-    if (memsets(hist, sizeof(hist), 0, sizeof(hist)) != 0)
+    if (n == 0) {
         return 0.0;
-    for (size_t i = 0; i < n; i++)
+    }
+    uint64_t hist[65536];
+    if (memsets(hist, sizeof(hist), 0, sizeof(hist)) != 0) {
+        return 0.0;
+    }
+    for (size_t i = 0; i < n; i++) {
         hist[data[i]]++;
+    }
     double total = (double)n;
     __m512d vtotal = _mm512_set1_pd(total);
     __m512d vsum = _mm512_setzero_pd();
@@ -133,7 +151,7 @@ simpson_u16_avx512f(const uint16_t *data, size_t n)
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 simpson_u16_neon(const uint16_t *data, size_t n)
@@ -169,14 +187,14 @@ simpson_u16_select(simd_level_t level)
     case SIMD_SSE4_2:  return simpson_u16_sse42;
     case SIMD_SSE2:    return simpson_u16_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return simpson_u16_sve2;
     case SIMD_SVE:     return simpson_u16_sve;
     case SIMD_NEON:    return simpson_u16_neon;
 #endif
     case SIMD_SCALAR:
     default:           return simpson_u16_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(simpson_u16_resolver, simpson_u16_fn_t)
@@ -186,7 +204,7 @@ EXPLICIT_RUNTIME_RESOLVER(simpson_u16_resolver, simpson_u16_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double simpson_u16(const uint16_t *data, size_t n)

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
@@ -12,9 +12,9 @@
 #if DYNEMIT_TS
 #include <pthread.h>
 #endif
-#include <dynemit/entropy.h>
-#include <dynemit/compiler.h>
 #include "mem.h"
+#include <dynemit/compiler.h>
+#include <dynemit/entropy.h>
 
 /*
  * Thread-local pre-zeroed buffers for entropy_u16.
@@ -28,13 +28,17 @@
  *
  * Layout: [hist: 65536 x uint32_t] [dirty: 65536 x uint16_t]
  */
-#define EU16_BINS 65536
+enum {
+    EU16_BINS = 65536
+};
 
 /*
  * Crossover where memset(256KB) is cheaper than N scattered zeroes.
  * memset ~1.3 us; scattered stores ~5 ns each → crossover ~260.
  */
-#define EU16_DIRTY_THRESHOLD 512
+enum {
+    EU16_DIRTY_THRESHOLD = 512
+};
 
 /*
  * When n >= this threshold the histogram is dense enough that a fused scan
@@ -68,7 +72,7 @@ eu16_tls_init_once(void)
 static inline int
 eu16_get_bufs(uint32_t **hist, uint16_t **dirty)
 {
-    void *eu16_tls = NULL;
+    void *eu16_tls = nullptr;
 
     pthread_once(&eu16_tls_once, eu16_tls_init_once);
     if (eu16_tls_pthread_ok)
@@ -99,15 +103,17 @@ eu16_get_bufs(uint32_t **hist, uint16_t **dirty)
     return 0;
 }
 #else
-static void *eu16_bufs = NULL;
+static void *eu16_bufs = nullptr;
 
 static inline int
 eu16_get_bufs(uint32_t **hist, uint16_t **dirty)
 {
     if (__builtin_expect(!eu16_bufs, 0)) {
-        size_t sz = EU16_BINS * sizeof(uint32_t) + EU16_BINS * sizeof(uint16_t);
+        size_t sz = (EU16_BINS * sizeof(uint32_t)) + (EU16_BINS * sizeof(uint16_t));
         eu16_bufs = aligned_alloc(64, sz);
-        if (!eu16_bufs) return -1;
+        if (!eu16_bufs) {
+            return -1;
+        }
         if (memsets(eu16_bufs, EU16_BINS * sizeof(uint32_t), 0,
                              EU16_BINS * sizeof(uint32_t)) != 0) {
             free(eu16_bufs);
@@ -115,7 +121,7 @@ eu16_get_bufs(uint32_t **hist, uint16_t **dirty)
         }
     }
     *hist  = (uint32_t *)eu16_bufs;
-    *dirty = (uint16_t *)((char *)eu16_bufs + EU16_BINS * sizeof(uint32_t));
+    *dirty = (uint16_t *)((char *)eu16_bufs + (EU16_BINS * sizeof(uint32_t)));
     return 0;
 }
 #endif
@@ -131,8 +137,9 @@ eu16_cleanup(uint32_t *hist, const uint16_t *dirty,
         }
     } else {
         if (memsets(hist, EU16_BINS * sizeof(uint32_t), 0,
-                             EU16_BINS * sizeof(uint32_t)) != 0)
+                             EU16_BINS * sizeof(uint32_t)) != 0) {
             return;
+        }
     }
 }
 
@@ -144,14 +151,19 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 entropy_u16_scalar(const uint16_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
-    uint32_t *hist;
-    uint16_t *dirty;
-    if (eu16_get_bufs(&hist, &dirty)) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
+    uint32_t *hist = nullptr;
+    uint16_t *dirty = nullptr;
+    if (eu16_get_bufs(&hist, &dirty)) {
+        return 0.0;
+    }
 
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         hist[data[i]]++;
+    }
 
     double inv_n = 1.0 / (double)n;
     double h = 0.0;
@@ -159,7 +171,9 @@ DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t j = 0; j < EU16_BINS; j++) {
         uint32_t c = hist[j];
-        if (c == 0) continue;
+        if (c == 0) {
+            continue;
+        }
         hist[j] = 0;
         double p = (double)c * inv_n;
         h -= p * fast_log2_scalar(p);
@@ -187,7 +201,9 @@ entropy_u16_sse2_fused(uint32_t *hist, size_t n)
 
     for (size_t j = 0; j < EU16_BINS; j += 2) {
         __m128i ci = _mm_loadl_epi64((const __m128i *)(hist + j));
-        if (_mm_cvtsi128_si64(ci) == 0) continue;
+        if (_mm_cvtsi128_si64(ci) == 0) {
+            continue;
+        }
         _mm_storel_epi64((__m128i *)(hist + j), vizero);
 
         __m128d cd = _mm_cvtepi32_pd(ci);
@@ -205,26 +221,37 @@ __attribute__((target("sse2")))
 static double
 entropy_u16_sse2(const uint16_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
-    uint32_t *hist;
-    uint16_t *dirty;
-    if (eu16_get_bufs(&hist, &dirty)) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
+    uint32_t *hist = nullptr;
+    uint16_t *dirty = nullptr;
+    if (eu16_get_bufs(&hist, &dirty)) {
+        return 0.0;
+    }
 
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         hist[data[i]]++;
+    }
 
-    if (n >= EU16_FUSED_THRESHOLD)
+    if (n >= EU16_FUSED_THRESHOLD) {
         return entropy_u16_sse2_fused(hist, n);
+    }
 
     size_t ndirty = 0;
     int tracked = 1;
-    for (size_t j = 0; j < EU16_BINS; j++)
+    for (size_t j = 0; j < EU16_BINS; j++) {
         if (hist[j] != 0) {
-            if (tracked) dirty[ndirty] = (uint16_t)j;
+            if (tracked) {
+                dirty[ndirty] = (uint16_t)j;
+            }
             hist[ndirty] = hist[j];
             ndirty++;
-            if (ndirty > EU16_DIRTY_THRESHOLD) tracked = 0;
+            if (ndirty > EU16_DIRTY_THRESHOLD) {
+                tracked = 0;
+            }
         }
+    }
 
     double inv_n = 1.0 / (double)n;
     __m128d vinv = _mm_set1_pd(inv_n);
@@ -270,8 +297,9 @@ entropy_u16_avx_fused(uint32_t *hist, size_t n)
 
     for (size_t j = 0; j < EU16_BINS; j += 4) {
         __m128i vi = _mm_load_si128((const __m128i *)(hist + j));
-        if (_mm_movemask_epi8(_mm_cmpeq_epi32(vi, vizero)) == 0xFFFF)
+        if (_mm_movemask_epi8(_mm_cmpeq_epi32(vi, vizero)) == 0xFFFF) {
             continue;
+        }
         _mm_store_si128((__m128i *)(hist + j), vizero);
 
         __m256d cd = _mm256_cvtepi32_pd(vi);
@@ -291,26 +319,37 @@ __attribute__((target("avx")))
 static double
 entropy_u16_avx(const uint16_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
-    uint32_t *hist;
-    uint16_t *dirty;
-    if (eu16_get_bufs(&hist, &dirty)) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
+    uint32_t *hist = nullptr;
+    uint16_t *dirty = nullptr;
+    if (eu16_get_bufs(&hist, &dirty)) {
+        return 0.0;
+    }
 
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         hist[data[i]]++;
+    }
 
-    if (n >= EU16_FUSED_THRESHOLD)
+    if (n >= EU16_FUSED_THRESHOLD) {
         return entropy_u16_avx_fused(hist, n);
+    }
 
     size_t ndirty = 0;
     int tracked = 1;
-    for (size_t j = 0; j < EU16_BINS; j++)
+    for (size_t j = 0; j < EU16_BINS; j++) {
         if (hist[j] != 0) {
-            if (tracked) dirty[ndirty] = (uint16_t)j;
+            if (tracked) {
+                dirty[ndirty] = (uint16_t)j;
+            }
             hist[ndirty] = hist[j];
             ndirty++;
-            if (ndirty > EU16_DIRTY_THRESHOLD) tracked = 0;
+            if (ndirty > EU16_DIRTY_THRESHOLD) {
+                tracked = 0;
+            }
         }
+    }
 
     double inv_n = 1.0 / (double)n;
     __m256d vinv = _mm256_set1_pd(inv_n);
@@ -351,8 +390,9 @@ entropy_u16_avx2_fused(uint32_t *hist, size_t n)
 
     for (size_t j = 0; j < EU16_BINS; j += 4) {
         __m128i vi = _mm_load_si128((const __m128i *)(hist + j));
-        if (_mm_movemask_epi8(_mm_cmpeq_epi32(vi, vizero)) == 0xFFFF)
+        if (_mm_movemask_epi8(_mm_cmpeq_epi32(vi, vizero)) == 0xFFFF) {
             continue;
+        }
         _mm_store_si128((__m128i *)(hist + j), vizero);
 
         __m256d cd = _mm256_cvtepi32_pd(vi);
@@ -372,26 +412,37 @@ __attribute__((target("avx2,fma")))
 static double
 entropy_u16_avx2(const uint16_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
-    uint32_t *hist;
-    uint16_t *dirty;
-    if (eu16_get_bufs(&hist, &dirty)) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
+    uint32_t *hist = nullptr;
+    uint16_t *dirty = nullptr;
+    if (eu16_get_bufs(&hist, &dirty)) {
+        return 0.0;
+    }
 
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         hist[data[i]]++;
+    }
 
-    if (n >= EU16_FUSED_THRESHOLD)
+    if (n >= EU16_FUSED_THRESHOLD) {
         return entropy_u16_avx2_fused(hist, n);
+    }
 
     size_t ndirty = 0;
     int tracked = 1;
-    for (size_t j = 0; j < EU16_BINS; j++)
+    for (size_t j = 0; j < EU16_BINS; j++) {
         if (hist[j] != 0) {
-            if (tracked) dirty[ndirty] = (uint16_t)j;
+            if (tracked) {
+                dirty[ndirty] = (uint16_t)j;
+            }
             hist[ndirty] = hist[j];
             ndirty++;
-            if (ndirty > EU16_DIRTY_THRESHOLD) tracked = 0;
+            if (ndirty > EU16_DIRTY_THRESHOLD) {
+                tracked = 0;
+            }
         }
+    }
 
     double inv_n = 1.0 / (double)n;
     __m256d vinv = _mm256_set1_pd(inv_n);
@@ -439,7 +490,9 @@ entropy_u16_avx512f_fused(uint32_t *hist, size_t n)
     for (size_t j = 0; j < EU16_BINS; j += 16) {
         __m512i vi = _mm512_load_si512(hist + j);
         __mmask16 nz = _mm512_cmpneq_epi32_mask(vi, vizero);
-        if (nz == 0) continue;
+        if (nz == 0) {
+            continue;
+        }
         _mm512_store_si512(hist + j, vizero);
 
         __m256i lo8 = _mm512_castsi512_si256(vi);
@@ -472,16 +525,22 @@ __attribute__((target("avx512f")))
 static double
 entropy_u16_avx512f(const uint16_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
-    uint32_t *hist;
-    uint16_t *dirty;
-    if (eu16_get_bufs(&hist, &dirty)) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
+    uint32_t *hist = nullptr;
+    uint16_t *dirty = nullptr;
+    if (eu16_get_bufs(&hist, &dirty)) {
+        return 0.0;
+    }
 
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         hist[data[i]]++;
+    }
 
-    if (n >= EU16_FUSED_THRESHOLD)
+    if (n >= EU16_FUSED_THRESHOLD) {
         return entropy_u16_avx512f_fused(hist, n);
+    }
 
     /* compress-store compaction + dirty index recording for small n */
     size_t ndirty = 0;
@@ -490,7 +549,9 @@ entropy_u16_avx512f(const uint16_t *data, size_t n)
     for (size_t j = 0; j < EU16_BINS; j += 16) {
         __m512i v  = _mm512_load_si512(hist + j);
         __mmask16 nz = _mm512_cmpneq_epi32_mask(v, vzero);
-        if (nz == 0) continue;
+        if (nz == 0) {
+            continue;
+        }
         _mm512_mask_compressstoreu_epi32(hist + ndirty, nz, v);
         if (tracked) {
             unsigned mask = (unsigned)nz;
@@ -502,7 +563,9 @@ entropy_u16_avx512f(const uint16_t *data, size_t n)
             }
         }
         ndirty += (size_t)_mm_popcnt_u32((unsigned)nz);
-        if (ndirty > EU16_DIRTY_THRESHOLD) tracked = 0;
+        if (ndirty > EU16_DIRTY_THRESHOLD) {
+            tracked = 0;
+        }
     }
 
     double inv_n = 1.0 / (double)n;
@@ -539,7 +602,7 @@ entropy_u16_avx512f(const uint16_t *data, size_t n)
 #endif /* x86 */
 
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 entropy_u16_neon(const uint16_t *data, size_t n)
@@ -575,14 +638,14 @@ entropy_u16_select(simd_level_t level)
     case SIMD_SSE4_2:  return entropy_u16_sse42;
     case SIMD_SSE2:    return entropy_u16_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return entropy_u16_sve2;
     case SIMD_SVE:     return entropy_u16_sve;
     case SIMD_NEON:    return entropy_u16_neon;
 #endif
     case SIMD_SCALAR:
     default:           return entropy_u16_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(entropy_u16_resolver, entropy_u16_fn_t)
@@ -592,7 +655,7 @@ EXPLICIT_RUNTIME_RESOLVER(entropy_u16_resolver, entropy_u16_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double entropy_u16(const uint16_t *data, size_t n)

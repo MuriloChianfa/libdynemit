@@ -1,19 +1,21 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include "mem.h"
+#include <dynemit/compiler.h>
+#include <dynemit/radixs.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <dynemit/radixs.h>
-#include <dynemit/compiler.h>
-#include "mem.h"
 
-#define RADIXS_U32_PASSES 4
-#define RADIXS_U32_BUCKETS 256
+enum {
+    RADIXS_U32_PASSES = 4,
+    RADIXS_U32_BUCKETS = 256
+};
 
 /*
  * Comparator and qsort fallback used when scratch allocation fails so the
@@ -32,8 +34,9 @@ radixs_u32_qsort_fallback(const uint32_t *in, uint32_t *out, size_t n)
 {
     if (in != out) {
         if (memcpys(out, n * sizeof(uint32_t), in,
-                             n * sizeof(uint32_t)) != 0)
+                             n * sizeof(uint32_t)) != 0) {
             return;
+        }
     }
     qsort(out, n, sizeof(uint32_t), radixs_u32_cmp);
 }
@@ -50,8 +53,9 @@ radixs_u32_build_histograms(const uint32_t *in, size_t n,
     if (memsets(hist,
                          sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS,
                          0,
-                         sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS) != 0)
+                         sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS) != 0) {
         return 0;
+    }
 
     for (size_t i = 0; i < n; i++) {
         uint32_t v = in[i];
@@ -65,7 +69,7 @@ radixs_u32_build_histograms(const uint32_t *in, size_t n,
     for (int p = 0; p < RADIXS_U32_PASSES; p++) {
         for (int b = 0; b < RADIXS_U32_BUCKETS; b++) {
             if (hist[p][b] == n) {
-                skip |= (1u << p);
+                skip |= (1U << p);
                 break;
             }
         }
@@ -113,7 +117,9 @@ radixs_u32_pass_scalar(const uint32_t *src, uint32_t *dst, size_t n,
 static void
 radixs_u32_run(const uint32_t *in, uint32_t *out, size_t n)
 {
-    if (n == 0) return;
+    if (n == 0) {
+        return;
+    }
     if (n == 1) { out[0] = in[0]; return; }
 
     uint32_t (*hist)[RADIXS_U32_BUCKETS] =
@@ -135,8 +141,9 @@ radixs_u32_run(const uint32_t *in, uint32_t *out, size_t n)
     int active_passes = 0;
     int pass_list[RADIXS_U32_PASSES];
     for (int p = 0; p < RADIXS_U32_PASSES; p++) {
-        if (!(skip & (1u << p)))
+        if (!(skip & (1U << p))) {
             pass_list[active_passes++] = p;
+        }
     }
 
     if (active_passes == 0) {
@@ -225,12 +232,16 @@ radixs_u32_build_histograms_avx2(const uint32_t *in, size_t n,
     if (memsets(hist,
                          sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS,
                          0,
-                         sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS) != 0)
+                         sizeof(uint32_t) * RADIXS_U32_PASSES * RADIXS_U32_BUCKETS) != 0) {
         return 0;
+    }
 
     const __m256i mask = _mm256_set1_epi32(0xff);
     size_t i = 0;
-    alignas(32) uint32_t b0[8], b1[8], b2[8], b3[8];
+    alignas(32) uint32_t b0[8];
+    alignas(32) uint32_t b1[8];
+    alignas(32) uint32_t b2[8];
+    alignas(32) uint32_t b3[8];
 
     for (; i + 8 <= n; i += 8) {
         __m256i v   = _mm256_loadu_si256((const __m256i *)(in + i));
@@ -261,7 +272,7 @@ radixs_u32_build_histograms_avx2(const uint32_t *in, size_t n,
     for (int p = 0; p < RADIXS_U32_PASSES; p++) {
         for (int b = 0; b < RADIXS_U32_BUCKETS; b++) {
             if (hist[p][b] == n) {
-                skip |= (1u << p);
+                skip |= (1U << p);
                 break;
             }
         }
@@ -273,7 +284,9 @@ __attribute__((target("avx2,bmi2")))
 static void
 radixs_u32_avx2_run(const uint32_t *in, uint32_t *out, size_t n)
 {
-    if (n == 0) return;
+    if (n == 0) {
+        return;
+    }
     if (n == 1) { out[0] = in[0]; return; }
 
     uint32_t (*hist)[RADIXS_U32_BUCKETS] =
@@ -285,9 +298,13 @@ radixs_u32_avx2_run(const uint32_t *in, uint32_t *out, size_t n)
     unsigned skip = radixs_u32_build_histograms_avx2(in, n, hist);
     radixs_u32_prefix_sum(hist);
 
-    int active = 0, pass_list[RADIXS_U32_PASSES];
-    for (int p = 0; p < RADIXS_U32_PASSES; p++)
-        if (!(skip & (1u << p))) pass_list[active++] = p;
+    int active = 0;
+    int pass_list[RADIXS_U32_PASSES];
+    for (int p = 0; p < RADIXS_U32_PASSES; p++) {
+        if (!(skip & (1U << p))) {
+            pass_list[active++] = p;
+        }
+    }
 
     if (active == 0) {
         if (memcpys(out, n * sizeof(uint32_t), in,
@@ -348,17 +365,20 @@ radixs_u32_pass_avx512f(const uint32_t *src, uint32_t *dst, size_t n,
         if (unique == 0xffff) {
             _mm512_store_si512((void *)buf_b, b);
             __m512i offsets = _mm512_set_epi32(
-                hist[buf_b[15]], hist[buf_b[14]], hist[buf_b[13]], hist[buf_b[12]],
-                hist[buf_b[11]], hist[buf_b[10]], hist[buf_b[ 9]], hist[buf_b[ 8]],
-                hist[buf_b[ 7]], hist[buf_b[ 6]], hist[buf_b[ 5]], hist[buf_b[ 4]],
-                hist[buf_b[ 3]], hist[buf_b[ 2]], hist[buf_b[ 1]], hist[buf_b[ 0]]);
+                (int)hist[buf_b[15]], (int)hist[buf_b[14]], (int)hist[buf_b[13]], (int)hist[buf_b[12]],
+                (int)hist[buf_b[11]], (int)hist[buf_b[10]], (int)hist[buf_b[ 9]], (int)hist[buf_b[ 8]],
+                (int)hist[buf_b[ 7]], (int)hist[buf_b[ 6]], (int)hist[buf_b[ 5]], (int)hist[buf_b[ 4]],
+                (int)hist[buf_b[ 3]], (int)hist[buf_b[ 2]], (int)hist[buf_b[ 1]], (int)hist[buf_b[ 0]]);
             _mm512_i32scatter_epi32(dst, offsets, v, 4);
-            for (int j = 0; j < 16; j++) hist[buf_b[j]]++;
+            for (int j = 0; j < 16; j++) {
+                hist[buf_b[j]]++;
+            }
         } else {
             _mm512_store_si512((void *)buf_v, v);
             _mm512_store_si512((void *)buf_b, b);
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 16; j++) {
                 dst[hist[buf_b[j]]++] = buf_v[j];
+            }
         }
     }
     for (; i < n; i++) {
@@ -372,7 +392,9 @@ __attribute__((target("avx512f,avx512cd,avx2,bmi2")))
 static void
 radixs_u32_avx512f(const uint32_t *in, uint32_t *out, size_t n)
 {
-    if (n == 0) return;
+    if (n == 0) {
+        return;
+    }
     if (n == 1) { out[0] = in[0]; return; }
 
     uint32_t (*hist)[RADIXS_U32_BUCKETS] =
@@ -384,9 +406,13 @@ radixs_u32_avx512f(const uint32_t *in, uint32_t *out, size_t n)
     unsigned skip = radixs_u32_build_histograms_avx2(in, n, hist);
     radixs_u32_prefix_sum(hist);
 
-    int active = 0, pass_list[RADIXS_U32_PASSES];
-    for (int p = 0; p < RADIXS_U32_PASSES; p++)
-        if (!(skip & (1u << p))) pass_list[active++] = p;
+    int active = 0;
+    int pass_list[RADIXS_U32_PASSES];
+    for (int p = 0; p < RADIXS_U32_PASSES; p++) {
+        if (!(skip & (1U << p))) {
+            pass_list[active++] = p;
+        }
+    }
 
     if (active == 0) {
         if (memcpys(out, n * sizeof(uint32_t), in,
@@ -428,8 +454,9 @@ radixs_u32_pass_vbmi2(const uint32_t *src, uint32_t *dst, size_t n,
      * We build that index once per pass.
      */
     alignas(64) uint8_t idx_bytes[64] = {0};
-    for (int k = 0; k < 16; k++)
-        idx_bytes[k * 4] = (uint8_t)(k * 4 + byte_idx);
+    for (int k = 0; k < 16; k++) {
+        idx_bytes[(size_t)k * 4U] = (uint8_t)((k * 4) + byte_idx);
+    }
     __m512i perm = _mm512_load_si512((const void *)idx_bytes);
     const __m512i mask = _mm512_set1_epi32(0xff);
 
@@ -446,17 +473,20 @@ radixs_u32_pass_vbmi2(const uint32_t *src, uint32_t *dst, size_t n,
         if (unique == 0xffff) {
             _mm512_store_si512((void *)buf_b, b);
             __m512i offsets = _mm512_set_epi32(
-                hist[buf_b[15]], hist[buf_b[14]], hist[buf_b[13]], hist[buf_b[12]],
-                hist[buf_b[11]], hist[buf_b[10]], hist[buf_b[ 9]], hist[buf_b[ 8]],
-                hist[buf_b[ 7]], hist[buf_b[ 6]], hist[buf_b[ 5]], hist[buf_b[ 4]],
-                hist[buf_b[ 3]], hist[buf_b[ 2]], hist[buf_b[ 1]], hist[buf_b[ 0]]);
+                (int)hist[buf_b[15]], (int)hist[buf_b[14]], (int)hist[buf_b[13]], (int)hist[buf_b[12]],
+                (int)hist[buf_b[11]], (int)hist[buf_b[10]], (int)hist[buf_b[ 9]], (int)hist[buf_b[ 8]],
+                (int)hist[buf_b[ 7]], (int)hist[buf_b[ 6]], (int)hist[buf_b[ 5]], (int)hist[buf_b[ 4]],
+                (int)hist[buf_b[ 3]], (int)hist[buf_b[ 2]], (int)hist[buf_b[ 1]], (int)hist[buf_b[ 0]]);
             _mm512_i32scatter_epi32(dst, offsets, v, 4);
-            for (int j = 0; j < 16; j++) hist[buf_b[j]]++;
+            for (int j = 0; j < 16; j++) {
+                hist[buf_b[j]]++;
+            }
         } else {
             _mm512_store_si512((void *)buf_v, v);
             _mm512_store_si512((void *)buf_b, b);
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 16; j++) {
                 dst[hist[buf_b[j]]++] = buf_v[j];
+            }
         }
     }
     int shift = byte_idx * 8;
@@ -471,7 +501,9 @@ __attribute__((target("avx512vbmi2,avx512vbmi,avx512bw,avx512f,avx512cd,avx2,bmi
 static void
 radixs_u32_avx512_vbmi2(const uint32_t *in, uint32_t *out, size_t n)
 {
-    if (n == 0) return;
+    if (n == 0) {
+        return;
+    }
     if (n == 1) { out[0] = in[0]; return; }
 
     uint32_t (*hist)[RADIXS_U32_BUCKETS] =
@@ -483,9 +515,13 @@ radixs_u32_avx512_vbmi2(const uint32_t *in, uint32_t *out, size_t n)
     unsigned skip = radixs_u32_build_histograms_avx2(in, n, hist);
     radixs_u32_prefix_sum(hist);
 
-    int active = 0, pass_list[RADIXS_U32_PASSES];
-    for (int p = 0; p < RADIXS_U32_PASSES; p++)
-        if (!(skip & (1u << p))) pass_list[active++] = p;
+    int active = 0;
+    int pass_list[RADIXS_U32_PASSES];
+    for (int p = 0; p < RADIXS_U32_PASSES; p++) {
+        if (!(skip & (1U << p))) {
+            pass_list[active++] = p;
+        }
+    }
 
     if (active == 0) {
         if (memcpys(out, n * sizeof(uint32_t), in,
@@ -512,7 +548,7 @@ radixs_u32_avx512_vbmi2(const uint32_t *in, uint32_t *out, size_t n)
 }
 #endif /* x86 */
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static void
 radixs_u32_neon(const uint32_t *in, uint32_t *out, size_t n)
@@ -548,14 +584,14 @@ radixs_u32_select(simd_level_t level)
     case SIMD_SSE4_2:  return radixs_u32_sse42;
     case SIMD_SSE2:    return radixs_u32_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return radixs_u32_sve2;
     case SIMD_SVE:     return radixs_u32_sve;
     case SIMD_NEON:    return radixs_u32_neon;
 #endif
     case SIMD_SCALAR:
     default:           return radixs_u32_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(radixs_u32_resolver, radixs_u32_fn_t)
@@ -565,7 +601,7 @@ EXPLICIT_RUNTIME_RESOLVER(radixs_u32_resolver, radixs_u32_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512vbmi2,avx512vbmi,avx512bw,avx512f,avx512cd,avx2,bmi2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 void radixs_u32(const uint32_t *in, uint32_t *out, size_t n)

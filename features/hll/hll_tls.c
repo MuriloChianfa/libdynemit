@@ -30,7 +30,7 @@ hll_regs_init_once(void)
 uint8_t *
 hll_get_regs(void)
 {
-    uint8_t *regs = NULL;
+    uint8_t *regs = nullptr;
 
     pthread_once(&hll_regs_once, hll_regs_init_once);
     if (hll_regs_pthread_ok)
@@ -40,15 +40,15 @@ hll_get_regs(void)
 
     if (__builtin_expect(!regs, 0)) {
         regs = aligned_alloc(64, DYNEMIT_HLL_M);
-        if (!regs) return NULL;
+        if (!regs) return nullptr;
         if (memsets(regs, DYNEMIT_HLL_M, 0, DYNEMIT_HLL_M) != 0) {
             free(regs);
-            return NULL;
+            return nullptr;
         }
         if (hll_regs_pthread_ok) {
             if (pthread_setspecific(hll_regs_key, regs) != 0) {
                 free(regs);
-                return NULL;
+                return nullptr;
             }
         } else {
             hll_regs_fallback = regs;

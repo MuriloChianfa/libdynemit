@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include <dynemit/compiler.h>
+#include <dynemit/sum.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <dynemit/sum.h>
-#include <dynemit/compiler.h>
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -19,8 +19,9 @@ sum_f64_scalar(const double *data, size_t n)
 {
     double sum = 0.0;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         sum += data[i];
+    }
     return sum;
 }
 
@@ -32,13 +33,15 @@ sum_f64_sse2(const double *data, size_t n)
 {
     size_t i = 0;
     __m128d vsum = _mm_setzero_pd();
-    for (; i + 2 <= n; i += 2)
+    for (; i + 2 <= n; i += 2) {
         vsum = _mm_add_pd(vsum, _mm_loadu_pd(data + i));
+    }
     __m128d hi = _mm_unpackhi_pd(vsum, vsum);
     vsum = _mm_add_pd(vsum, hi);
     double sum = _mm_cvtsd_f64(vsum);
-    for (; i < n; i++)
+    for (; i < n; i++) {
         sum += data[i];
+    }
     return sum;
 }
 
@@ -55,16 +58,18 @@ sum_f64_avx(const double *data, size_t n)
 {
     size_t i = 0;
     __m256d vsum = _mm256_setzero_pd();
-    for (; i + 4 <= n; i += 4)
+    for (; i + 4 <= n; i += 4) {
         vsum = _mm256_add_pd(vsum, _mm256_loadu_pd(data + i));
+    }
     __m128d lo = _mm256_castpd256_pd128(vsum);
     __m128d hi = _mm256_extractf128_pd(vsum, 1);
     __m128d s  = _mm_add_pd(lo, hi);
     __m128d sh = _mm_unpackhi_pd(s, s);
     s = _mm_add_pd(s, sh);
     double sum = _mm_cvtsd_f64(s);
-    for (; i < n; i++)
+    for (; i < n; i++) {
         sum += data[i];
+    }
     return sum;
 }
 
@@ -81,16 +86,18 @@ sum_f64_avx512f(const double *data, size_t n)
 {
     size_t i = 0;
     __m512d vsum = _mm512_setzero_pd();
-    for (; i + 8 <= n; i += 8)
+    for (; i + 8 <= n; i += 8) {
         vsum = _mm512_add_pd(vsum, _mm512_loadu_pd(data + i));
+    }
     double sum = _mm512_reduce_add_pd(vsum);
-    for (; i < n; i++)
+    for (; i < n; i++) {
         sum += data[i];
+    }
     return sum;
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 sum_f64_neon(const double *data, size_t n)
@@ -157,14 +164,14 @@ sum_f64_select(simd_level_t level)
     case SIMD_SSE4_2:  return sum_f64_sse42;
     case SIMD_SSE2:    return sum_f64_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return sum_f64_sve2;
     case SIMD_SVE:     return sum_f64_sve;
     case SIMD_NEON:    return sum_f64_neon;
 #endif
     case SIMD_SCALAR:
     default:           return sum_f64_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(sum_f64_resolver, sum_f64_fn_t)
@@ -174,7 +181,7 @@ EXPLICIT_RUNTIME_RESOLVER(sum_f64_resolver, sum_f64_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double sum_f64(const double *data, size_t n)

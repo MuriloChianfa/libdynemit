@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
-#include <stddef.h>
-#include <stdint.h>
-#include <dynemit/variance.h>
 #include <dynemit/compiler.h>
 #include <dynemit/mean.h>
+#include <dynemit/variance.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -18,7 +18,9 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 variance_f64_scalar(const double *data, size_t n)
 {
-    if (n < 2) return 0.0;
+    if (n < 2) {
+        return 0.0;
+    }
     double m = mean_f64(data, n);
     double sum2 = 0.0;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
@@ -35,7 +37,9 @@ __attribute__((target("sse2")))
 static double
 variance_f64_sse2(const double *data, size_t n)
 {
-    if (n < 2) return 0.0;
+    if (n < 2) {
+        return 0.0;
+    }
     double m = mean_f64(data, n);
     size_t i = 0;
     __m128d vmean = _mm_set1_pd(m);
@@ -66,7 +70,9 @@ __attribute__((target("avx")))
 static double
 variance_f64_avx(const double *data, size_t n)
 {
-    if (n < 2) return 0.0;
+    if (n < 2) {
+        return 0.0;
+    }
     double m = mean_f64(data, n);
     size_t i = 0;
     __m256d vmean = _mm256_set1_pd(m);
@@ -100,7 +106,9 @@ __attribute__((target("avx512f")))
 static double
 variance_f64_avx512f(const double *data, size_t n)
 {
-    if (n < 2) return 0.0;
+    if (n < 2) {
+        return 0.0;
+    }
     double m = mean_f64(data, n);
     size_t i = 0;
     __m512d vmean = _mm512_set1_pd(m);
@@ -119,7 +127,7 @@ variance_f64_avx512f(const double *data, size_t n)
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 variance_f64_neon(const double *data, size_t n)
@@ -208,14 +216,14 @@ variance_f64_select(simd_level_t level)
     case SIMD_SSE4_2:  return variance_f64_sse42;
     case SIMD_SSE2:    return variance_f64_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return variance_f64_sve2;
     case SIMD_SVE:     return variance_f64_sve;
     case SIMD_NEON:    return variance_f64_neon;
 #endif
     case SIMD_SCALAR:
     default:           return variance_f64_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(variance_f64_resolver, variance_f64_fn_t)
@@ -225,7 +233,7 @@ EXPLICIT_RUNTIME_RESOLVER(variance_f64_resolver, variance_f64_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double variance_f64(const double *data, size_t n)

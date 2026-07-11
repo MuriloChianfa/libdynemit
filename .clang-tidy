@@ -1,0 +1,20 @@
+# clang-tidy config for feature implementations (SIMD C kernels).
+# Run: run-clang-tidy-21 -p build-tidy 'features/[^/]+/[^/]+\.c'
+Checks: >-
+  -*,
+  performance-*,
+  bugprone-*,
+  clang-analyzer-*,
+  readability-braces-around-statements,
+  readability-use-concise-preprocessor-directives,
+  llvm-include-order,
+  readability-uppercase-literal-suffix,
+  readability-isolate-declaration,
+  readability-math-missing-parentheses,
+  modernize-use-nullptr,
+  cppcoreguidelines-init-variables,
+  modernize-macro-to-enum,
+  -bugprone-easily-swappable-parameters
+WarningsAsErrors: '*'
+HeaderFilterRegex: '*'
+FormatStyle: none

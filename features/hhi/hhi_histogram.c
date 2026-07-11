@@ -1,16 +1,16 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include <dynemit/compiler.h>
+#include <dynemit/hhi.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dynemit/hhi.h>
-#include <dynemit/compiler.h>
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -19,12 +19,17 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 hhi_histogram_scalar(const uint64_t *counts, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     double total = 0.0;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         total += (double)counts[i];
-    if (total == 0.0) return 0.0;
+    }
+    if (total == 0.0) {
+        return 0.0;
+    }
     double sum_sq = 0.0;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
@@ -40,11 +45,16 @@ __attribute__((target("sse2")))
 static double
 hhi_histogram_sse2(const uint64_t *counts, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     double total = 0.0;
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         total += (double)counts[i];
-    if (total == 0.0) return 0.0;
+    }
+    if (total == 0.0) {
+        return 0.0;
+    }
     __m128d vtotal = _mm_set1_pd(total);
     __m128d vsum = _mm_setzero_pd();
     size_t i = 0;
@@ -74,11 +84,16 @@ __attribute__((target("avx")))
 static double
 hhi_histogram_avx(const uint64_t *counts, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     double total = 0.0;
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         total += (double)counts[i];
-    if (total == 0.0) return 0.0;
+    }
+    if (total == 0.0) {
+        return 0.0;
+    }
     __m256d vtotal = _mm256_set1_pd(total);
     __m256d vsum = _mm256_setzero_pd();
     size_t i = 0;
@@ -113,11 +128,16 @@ __attribute__((target("avx512f")))
 static double
 hhi_histogram_avx512f(const uint64_t *counts, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     double total = 0.0;
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         total += (double)counts[i];
-    if (total == 0.0) return 0.0;
+    }
+    if (total == 0.0) {
+        return 0.0;
+    }
     __m512d vtotal = _mm512_set1_pd(total);
     __m512d vsum = _mm512_setzero_pd();
     size_t i = 0;
@@ -139,7 +159,7 @@ hhi_histogram_avx512f(const uint64_t *counts, size_t n)
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 hhi_histogram_neon(const uint64_t *counts, size_t n)
@@ -175,14 +195,14 @@ hhi_histogram_select(simd_level_t level)
     case SIMD_SSE4_2:  return hhi_histogram_sse42;
     case SIMD_SSE2:    return hhi_histogram_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return hhi_histogram_sve2;
     case SIMD_SVE:     return hhi_histogram_sve;
     case SIMD_NEON:    return hhi_histogram_neon;
 #endif
     case SIMD_SCALAR:
     default:           return hhi_histogram_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(hhi_histogram_resolver, hhi_histogram_fn_t)
@@ -192,7 +212,7 @@ EXPLICIT_RUNTIME_RESOLVER(hhi_histogram_resolver, hhi_histogram_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double hhi_histogram(const uint64_t *counts, size_t n)

@@ -236,7 +236,7 @@ jobs:
         name: cppcheck-report
         path: cppcheck-report.txt
 
-  clang-tidy-performance:
+  clang-tidy:
     name: clang-tidy
     runs-on: ubuntu-latest
 
@@ -269,15 +269,13 @@ jobs:
     - name: Run clang-tidy
       run: |
         run-clang-tidy-21 -p build-tidy \
-          -checks='performance-*' \
-          -header-filter=.* \
           'features/[^/]+/[^/]+\.c' 2>&1 | tee clang-tidy-report.txt
 
     - name: Upload clang-tidy report
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: clang-tidy-performance-report
+        name: clang-tidy-report
         path: clang-tidy-report.txt
 
   simd-verification:

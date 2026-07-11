@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #  include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #  include <arm_neon.h>
 #  include <arm_sve.h>
 #endif
@@ -21,9 +21,13 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 hll_u64_scalar(const uint64_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     uint8_t *regs = hll_get_regs();
-    if (!regs) return 0.0;
+    if (!regs) {
+        return 0.0;
+    }
 
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
@@ -44,9 +48,13 @@ __attribute__((target("sse2")))
 static double
 hll_u64_sse2(const uint64_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     uint8_t *regs = hll_get_regs();
-    if (!regs) return 0.0;
+    if (!regs) {
+        return 0.0;
+    }
 
     for (size_t i = 0; i < n; i++) {
         uint64_t h   = hll_mix64(data[i]);
@@ -71,9 +79,13 @@ __attribute__((target("avx")))
 static double
 hll_u64_avx(const uint64_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     uint8_t *regs = hll_get_regs();
-    if (!regs) return 0.0;
+    if (!regs) {
+        return 0.0;
+    }
 
     for (size_t i = 0; i < n; i++) {
         uint64_t h   = hll_mix64(data[i]);
@@ -91,9 +103,13 @@ __attribute__((target("avx2,fma")))
 static double
 hll_u64_avx2(const uint64_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     uint8_t *regs = hll_get_regs();
-    if (!regs) return 0.0;
+    if (!regs) {
+        return 0.0;
+    }
 
     for (size_t i = 0; i < n; i++) {
         uint64_t h   = hll_mix64(data[i]);
@@ -111,9 +127,13 @@ __attribute__((target("avx512f")))
 static double
 hll_u64_avx512f(const uint64_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     uint8_t *regs = hll_get_regs();
-    if (!regs) return 0.0;
+    if (!regs) {
+        return 0.0;
+    }
 
     for (size_t i = 0; i < n; i++) {
         uint64_t h   = hll_mix64(data[i]);
@@ -129,7 +149,7 @@ hll_u64_avx512f(const uint64_t *data, size_t n)
 
 #endif /* x86 */
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 hll_u64_neon(const uint64_t *data, size_t n)
@@ -165,14 +185,14 @@ hll_u64_select(simd_level_t level)
     case SIMD_SSE4_2:  return hll_u64_sse42;
     case SIMD_SSE2:    return hll_u64_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return hll_u64_sve2;
     case SIMD_SVE:     return hll_u64_sve;
     case SIMD_NEON:    return hll_u64_neon;
 #endif
     case SIMD_SCALAR:
     default:           return hll_u64_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(hll_u64_resolver, hll_u64_fn_t)
@@ -182,7 +202,7 @@ EXPLICIT_RUNTIME_RESOLVER(hll_u64_resolver, hll_u64_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double hll_u64(const uint64_t *data, size_t n)

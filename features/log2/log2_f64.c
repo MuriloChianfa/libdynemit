@@ -3,9 +3,9 @@
 #include <immintrin.h>
 #endif
 #include "fast_log2.h"
-#include <stddef.h>
-#include <dynemit/log2.h>
 #include <dynemit/compiler.h>
+#include <dynemit/log2.h>
+#include <stddef.h>
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -15,8 +15,9 @@ static void
 log2_f64_scalar(const double *in, double *out, size_t n)
 {
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         out[i] = fast_log2_scalar(in[i]);
+    }
 }
 
 
@@ -32,8 +33,9 @@ log2_f64_sse2(const double *in, double *out, size_t n)
         __m128d r = fast_log2_pd_sse2(v);
         _mm_storeu_pd(out + i, r);
     }
-    for (; i < n; i++)
+    for (; i < n; i++) {
         out[i] = fast_log2_scalar(in[i]);
+    }
 }
 
 __attribute__((target("sse4.2")))
@@ -53,8 +55,9 @@ log2_f64_avx(const double *in, double *out, size_t n)
         __m256d r = fast_log2_pd_avx(v);
         _mm256_storeu_pd(out + i, r);
     }
-    for (; i < n; i++)
+    for (; i < n; i++) {
         out[i] = fast_log2_scalar(in[i]);
+    }
 }
 
 __attribute__((target("avx2,fma")))
@@ -67,8 +70,9 @@ log2_f64_avx2(const double *in, double *out, size_t n)
         __m256d r = fast_log2_pd_avx2_fma(v);
         _mm256_storeu_pd(out + i, r);
     }
-    for (; i < n; i++)
+    for (; i < n; i++) {
         out[i] = fast_log2_scalar(in[i]);
+    }
 }
 
 __attribute__((target("avx512f")))
@@ -81,13 +85,14 @@ log2_f64_avx512f(const double *in, double *out, size_t n)
         __m512d r = fast_log2_pd_avx512(v);
         _mm512_storeu_pd(out + i, r);
     }
-    for (; i < n; i++)
+    for (; i < n; i++) {
         out[i] = fast_log2_scalar(in[i]);
+    }
 }
 
 #endif /* x86 */
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static void
 log2_f64_neon(const double *in, double *out, size_t n)
@@ -123,14 +128,14 @@ log2_f64_select(simd_level_t level)
     case SIMD_SSE4_2:  return log2_f64_sse42;
     case SIMD_SSE2:    return log2_f64_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return log2_f64_sve2;
     case SIMD_SVE:     return log2_f64_sve;
     case SIMD_NEON:    return log2_f64_neon;
 #endif
     case SIMD_SCALAR:
     default:           return log2_f64_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(log2_f64_resolver, log2_f64_fn_t)
@@ -140,7 +145,7 @@ EXPLICIT_RUNTIME_RESOLVER(log2_f64_resolver, log2_f64_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 void log2_f64(const double *in, double *out, size_t n)

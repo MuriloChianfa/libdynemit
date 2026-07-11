@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
 #include "fast_log2.h"
+#include <dynemit/compiler.h>
+#include <dynemit/entropy.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <dynemit/entropy.h>
-#include <dynemit/compiler.h>
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -18,17 +18,24 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 entropy_histogram_scalar(const uint64_t *counts, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     uint64_t total = 0;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         total += counts[i];
-    if (total == 0) return 0.0;
+    }
+    if (total == 0) {
+        return 0.0;
+    }
     double inv_total = 1.0 / (double)total;
     double h = 0.0;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
-        if (counts[i] == 0) continue;
+        if (counts[i] == 0) {
+            continue;
+        }
         double p = (double)counts[i] * inv_total;
         h -= p * fast_log2_scalar(p);
     }
@@ -40,24 +47,32 @@ __attribute__((target("sse2")))
 static double
 entropy_histogram_sse2(const uint64_t *counts, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
 
     size_t i = 0;
     __m128i vsum_i = _mm_setzero_si128();
-    for (; i + 2 <= n; i += 2)
+    for (; i + 2 <= n; i += 2) {
         vsum_i = _mm_add_epi64(vsum_i,
                     _mm_loadu_si128((const __m128i *)(counts + i)));
+    }
     alignas(16) uint64_t tmp[2];
     _mm_store_si128((__m128i *)tmp, vsum_i);
     uint64_t total = tmp[0] + tmp[1];
-    for (; i < n; i++)
+    for (; i < n; i++) {
         total += counts[i];
-    if (total == 0) return 0.0;
+    }
+    if (total == 0) {
+        return 0.0;
+    }
 
     double inv_total = 1.0 / (double)total;
     double h = 0.0;
     for (i = 0; i < n; i++) {
-        if (counts[i] == 0) continue;
+        if (counts[i] == 0) {
+            continue;
+        }
         double p = (double)counts[i] * inv_total;
         h -= p * fast_log2_scalar(p);
     }
@@ -75,19 +90,25 @@ __attribute__((target("avx")))
 static double
 entropy_histogram_avx(const uint64_t *counts, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
 
     size_t i = 0;
     __m128i vsum_i = _mm_setzero_si128();
-    for (; i + 2 <= n; i += 2)
+    for (; i + 2 <= n; i += 2) {
         vsum_i = _mm_add_epi64(vsum_i,
                     _mm_loadu_si128((const __m128i *)(counts + i)));
+    }
     alignas(16) uint64_t tmp[2];
     _mm_store_si128((__m128i *)tmp, vsum_i);
     uint64_t total = tmp[0] + tmp[1];
-    for (; i < n; i++)
+    for (; i < n; i++) {
         total += counts[i];
-    if (total == 0) return 0.0;
+    }
+    if (total == 0) {
+        return 0.0;
+    }
 
     double inv_total = 1.0 / (double)total;
     __m256d vinv = _mm256_set1_pd(inv_total);
@@ -113,7 +134,9 @@ entropy_histogram_avx(const uint64_t *counts, size_t n)
     double h = _mm_cvtsd_f64(lo);
 
     for (; i < n; i++) {
-        if (counts[i] == 0) continue;
+        if (counts[i] == 0) {
+            continue;
+        }
         double p = (double)counts[i] * inv_total;
         h -= p * fast_log2_scalar(p);
     }
@@ -124,19 +147,25 @@ __attribute__((target("avx2,fma")))
 static double
 entropy_histogram_avx2(const uint64_t *counts, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
 
     size_t i = 0;
     __m256i vsum_i = _mm256_setzero_si256();
-    for (; i + 4 <= n; i += 4)
+    for (; i + 4 <= n; i += 4) {
         vsum_i = _mm256_add_epi64(vsum_i,
                     _mm256_loadu_si256((const __m256i *)(counts + i)));
+    }
     alignas(32) uint64_t tmp[4];
     _mm256_storeu_si256((__m256i *)tmp, vsum_i);
     uint64_t total = tmp[0] + tmp[1] + tmp[2] + tmp[3];
-    for (; i < n; i++)
+    for (; i < n; i++) {
         total += counts[i];
-    if (total == 0) return 0.0;
+    }
+    if (total == 0) {
+        return 0.0;
+    }
 
     double inv_total = 1.0 / (double)total;
     __m256d vinv = _mm256_set1_pd(inv_total);
@@ -162,7 +191,9 @@ entropy_histogram_avx2(const uint64_t *counts, size_t n)
     double h = _mm_cvtsd_f64(lo);
 
     for (; i < n; i++) {
-        if (counts[i] == 0) continue;
+        if (counts[i] == 0) {
+            continue;
+        }
         double p = (double)counts[i] * inv_total;
         h -= p * fast_log2_scalar(p);
     }
@@ -173,20 +204,27 @@ __attribute__((target("avx512f")))
 static double
 entropy_histogram_avx512f(const uint64_t *counts, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
 
     size_t i = 0;
     __m512i vsum_i = _mm512_setzero_si512();
-    for (; i + 8 <= n; i += 8)
+    for (; i + 8 <= n; i += 8) {
         vsum_i = _mm512_add_epi64(vsum_i, _mm512_loadu_si512(counts + i));
+    }
     alignas(64) uint64_t tmp[8];
     _mm512_storeu_si512(tmp, vsum_i);
     uint64_t total = 0;
-    for (size_t j = 0; j < 8; j++)
+    for (size_t j = 0; j < 8; j++) {
         total += tmp[j];
-    for (; i < n; i++)
+    }
+    for (; i < n; i++) {
         total += counts[i];
-    if (total == 0) return 0.0;
+    }
+    if (total == 0) {
+        return 0.0;
+    }
 
     double inv_total = 1.0 / (double)total;
     __m512d vinv = _mm512_set1_pd(inv_total);
@@ -218,7 +256,9 @@ entropy_histogram_avx512f(const uint64_t *counts, size_t n)
     double h = _mm_cvtsd_f64(s2);
 
     for (; i < n; i++) {
-        if (counts[i] == 0) continue;
+        if (counts[i] == 0) {
+            continue;
+        }
         double p = (double)counts[i] * inv_total;
         h -= p * fast_log2_scalar(p);
     }
@@ -226,7 +266,7 @@ entropy_histogram_avx512f(const uint64_t *counts, size_t n)
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 entropy_histogram_neon(const uint64_t *counts, size_t n)
@@ -262,14 +302,14 @@ entropy_histogram_select(simd_level_t level)
     case SIMD_SSE4_2:  return entropy_histogram_sse42;
     case SIMD_SSE2:    return entropy_histogram_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return entropy_histogram_sve2;
     case SIMD_SVE:     return entropy_histogram_sve;
     case SIMD_NEON:    return entropy_histogram_neon;
 #endif
     case SIMD_SCALAR:
     default:           return entropy_histogram_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(entropy_histogram_resolver, entropy_histogram_fn_t)
@@ -279,7 +319,7 @@ EXPLICIT_RUNTIME_RESOLVER(entropy_histogram_resolver, entropy_histogram_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double entropy_histogram(const uint64_t *counts, size_t n)

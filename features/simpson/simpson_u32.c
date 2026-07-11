@@ -1,16 +1,16 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include "mem.h"
+#include <dynemit/compiler.h>
+#include <dynemit/simpson.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <dynemit/simpson.h>
-#include <dynemit/compiler.h>
-#include "mem.h"
 
 static int
 cmp_u32(const void *a, const void *b)
@@ -27,9 +27,13 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 simpson_u32_scalar(const uint32_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     uint32_t *sorted = (uint32_t *)malloc(n * sizeof(uint32_t));
-    if (!sorted) return 0.0;
+    if (!sorted) {
+        return 0.0;
+    }
     if (memcpys(sorted, n * sizeof(uint32_t), data,
                          n * sizeof(uint32_t)) != 0) {
         free(sorted);
@@ -74,9 +78,13 @@ __attribute__((target("avx")))
 static double
 simpson_u32_avx(const uint32_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     uint32_t *sorted = (uint32_t *)malloc(n * sizeof(uint32_t));
-    if (!sorted) return 0.0;
+    if (!sorted) {
+        return 0.0;
+    }
     if (memcpys(sorted, n * sizeof(uint32_t), data,
                          n * sizeof(uint32_t)) != 0) {
         free(sorted);
@@ -88,7 +96,9 @@ simpson_u32_avx(const uint32_t *data, size_t n)
     for (size_t j = 0; j < n; ) {
         ndistinct++;
         uint32_t val = sorted[j];
-        while (j < n && sorted[j] == val) j++;
+        while (j < n && sorted[j] == val) {
+            j++;
+        }
     }
 
     uint64_t *counts = (uint64_t *)malloc(ndistinct * sizeof(uint64_t));
@@ -138,9 +148,13 @@ __attribute__((target("avx512f")))
 static double
 simpson_u32_avx512f(const uint32_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     uint32_t *sorted = (uint32_t *)malloc(n * sizeof(uint32_t));
-    if (!sorted) return 0.0;
+    if (!sorted) {
+        return 0.0;
+    }
     if (memcpys(sorted, n * sizeof(uint32_t), data,
                          n * sizeof(uint32_t)) != 0) {
         free(sorted);
@@ -152,7 +166,9 @@ simpson_u32_avx512f(const uint32_t *data, size_t n)
     for (size_t j = 0; j < n; ) {
         ndistinct++;
         uint32_t val = sorted[j];
-        while (j < n && sorted[j] == val) j++;
+        while (j < n && sorted[j] == val) {
+            j++;
+        }
     }
 
     uint64_t *counts = (uint64_t *)malloc(ndistinct * sizeof(uint64_t));
@@ -189,7 +205,7 @@ simpson_u32_avx512f(const uint32_t *data, size_t n)
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 simpson_u32_neon(const uint32_t *data, size_t n)
@@ -225,14 +241,14 @@ simpson_u32_select(simd_level_t level)
     case SIMD_SSE4_2:  return simpson_u32_sse42;
     case SIMD_SSE2:    return simpson_u32_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return simpson_u32_sve2;
     case SIMD_SVE:     return simpson_u32_sve;
     case SIMD_NEON:    return simpson_u32_neon;
 #endif
     case SIMD_SCALAR:
     default:           return simpson_u32_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(simpson_u32_resolver, simpson_u32_fn_t)
@@ -242,7 +258,7 @@ EXPLICIT_RUNTIME_RESOLVER(simpson_u32_resolver, simpson_u32_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double simpson_u32(const uint32_t *data, size_t n)

@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: BSL-1.0 */
-#if defined(__aarch64__)
+#ifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include <dynemit/compiler.h>
+#include <dynemit/mean.h>
+#include <dynemit/sum.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <dynemit/mean.h>
-#include <dynemit/compiler.h>
-#include <dynemit/sum.h>
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -16,7 +16,9 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 mean_u16_impl(const uint16_t *data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     return sum_u16(data, n) / (double)n;
 }
 
@@ -34,7 +36,7 @@ __attribute__((target("avx512f")))
 static double mean_u16_avx512f(const uint16_t *d, size_t n) { return mean_u16_impl(d, n); }
 #endif /* x86 */
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 mean_u16_neon(const uint16_t *data, size_t n)
@@ -112,14 +114,14 @@ mean_u16_select(simd_level_t level)
     case SIMD_SSE4_2:  return mean_u16_sse42;
     case SIMD_SSE2:    return mean_u16_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return mean_u16_sve2;
     case SIMD_SVE:     return mean_u16_sve;
     case SIMD_NEON:    return mean_u16_neon;
 #endif
     case SIMD_SCALAR:
     default:           return mean_u16_impl;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(mean_u16_resolver, mean_u16_fn_t)
@@ -129,7 +131,7 @@ EXPLICIT_RUNTIME_RESOLVER(mean_u16_resolver, mean_u16_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double mean_u16(const uint16_t *data, size_t n)

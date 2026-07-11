@@ -1,16 +1,16 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include <dynemit/compiler.h>
+#include <dynemit/kurtosis.h>
+#include <dynemit/mean.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <dynemit/kurtosis.h>
-#include <dynemit/compiler.h>
-#include <dynemit/mean.h>
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -19,9 +19,12 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 kurtosis_f64_scalar(const double *data, size_t n)
 {
-    if (n < 4) return 0.0;
+    if (n < 4) {
+        return 0.0;
+    }
     double m = mean_f64(data, n);
-    double sum2 = 0.0, sum4 = 0.0;
+    double sum2 = 0.0;
+    double sum4 = 0.0;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
         double d  = data[i] - m;
@@ -30,8 +33,10 @@ DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
         sum4 += d2 * d2;
     }
     double var = sum2 / (double)n;
-    if (var < 1e-30) return 0.0;
-    return (sum4 / (double)n) / (var * var) - 3.0;
+    if (var < 1e-30) {
+        return 0.0;
+    }
+    return ((sum4 / (double)n) / (var * var)) - 3.0;
 }
 
 
@@ -54,7 +59,9 @@ __attribute__((target("avx")))
 static double
 kurtosis_f64_avx(const double *data, size_t n)
 {
-    if (n < 4) return 0.0;
+    if (n < 4) {
+        return 0.0;
+    }
     double m = mean_f64(data, n);
     size_t i = 0;
     __m256d vmean = _mm256_set1_pd(m);
@@ -86,8 +93,10 @@ kurtosis_f64_avx(const double *data, size_t n)
         sum4 += d2 * d2;
     }
     double var = sum2 / (double)n;
-    if (var < 1e-30) return 0.0;
-    return (sum4 / (double)n) / (var * var) - 3.0;
+    if (var < 1e-30) {
+        return 0.0;
+    }
+    return ((sum4 / (double)n) / (var * var)) - 3.0;
 }
 
 __attribute__((target("avx2")))
@@ -101,7 +110,9 @@ __attribute__((target("avx512f")))
 static double
 kurtosis_f64_avx512f(const double *data, size_t n)
 {
-    if (n < 4) return 0.0;
+    if (n < 4) {
+        return 0.0;
+    }
     double m = mean_f64(data, n);
     size_t i = 0;
     __m512d vmean = _mm512_set1_pd(m);
@@ -123,12 +134,14 @@ kurtosis_f64_avx512f(const double *data, size_t n)
         sum4 += d2 * d2;
     }
     double var = sum2 / (double)n;
-    if (var < 1e-30) return 0.0;
-    return (sum4 / (double)n) / (var * var) - 3.0;
+    if (var < 1e-30) {
+        return 0.0;
+    }
+    return ((sum4 / (double)n) / (var * var)) - 3.0;
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 kurtosis_f64_neon(const double *data, size_t n)
@@ -245,14 +258,14 @@ kurtosis_f64_select(simd_level_t level)
     case SIMD_SSE4_2:  return kurtosis_f64_sse42;
     case SIMD_SSE2:    return kurtosis_f64_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return kurtosis_f64_sve2;
     case SIMD_SVE:     return kurtosis_f64_sve;
     case SIMD_NEON:    return kurtosis_f64_neon;
 #endif
     case SIMD_SCALAR:
     default:           return kurtosis_f64_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(kurtosis_f64_resolver, kurtosis_f64_fn_t)
@@ -262,7 +275,7 @@ EXPLICIT_RUNTIME_RESOLVER(kurtosis_f64_resolver, kurtosis_f64_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double kurtosis_f64(const double *data, size_t n)

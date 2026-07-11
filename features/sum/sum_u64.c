@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include <dynemit/compiler.h>
+#include <dynemit/sum.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <dynemit/sum.h>
-#include <dynemit/compiler.h>
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("default")))
@@ -19,8 +19,9 @@ sum_u64_scalar(const uint64_t *data, size_t n)
 {
     double sum = 0.0;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++) {
         sum += (double)data[i];
+    }
     return sum;
 }
 
@@ -60,20 +61,23 @@ sum_u64_avx512f(const uint64_t *data, size_t n)
 {
     size_t i = 0;
     __m512i vsum = _mm512_setzero_si512();
-    for (; i + 8 <= n; i += 8)
+    for (; i + 8 <= n; i += 8) {
         vsum = _mm512_add_epi64(vsum, _mm512_loadu_si512(data + i));
+    }
     alignas(64) uint64_t tmp[8];
     _mm512_storeu_si512(tmp, vsum);
     double sum = 0.0;
-    for (int j = 0; j < 8; j++)
+    for (int j = 0; j < 8; j++) {
         sum += (double)tmp[j];
-    for (; i < n; i++)
+    }
+    for (; i < n; i++) {
         sum += (double)data[i];
+    }
     return sum;
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 sum_u64_neon(const uint64_t *data, size_t n)
@@ -146,14 +150,14 @@ sum_u64_select(simd_level_t level)
     case SIMD_SSE4_2:  return sum_u64_sse42;
     case SIMD_SSE2:    return sum_u64_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return sum_u64_sve2;
     case SIMD_SVE:     return sum_u64_sve;
     case SIMD_NEON:    return sum_u64_neon;
 #endif
     case SIMD_SCALAR:
     default:           return sum_u64_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(sum_u64_resolver, sum_u64_fn_t)
@@ -163,7 +167,7 @@ EXPLICIT_RUNTIME_RESOLVER(sum_u64_resolver, sum_u64_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double sum_u64(const uint64_t *data, size_t n)

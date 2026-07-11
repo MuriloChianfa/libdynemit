@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include "mem.h"
+#include <dynemit/compiler.h>
+#include <dynemit/histogram.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <dynemit/histogram.h>
-#include <dynemit/compiler.h>
-#include "mem.h"
 
 /*
  * Count elements falling into ranges defined by boundaries.
@@ -34,8 +34,9 @@ histogram_u64_scalar(const uint64_t *data, size_t n,
                            uint64_t *out)
 {
     if (memsets(out, (num_boundaries + 1) * sizeof(uint64_t), 0,
-                         (num_boundaries + 1) * sizeof(uint64_t)) != 0)
+                         (num_boundaries + 1) * sizeof(uint64_t)) != 0) {
         return;
+    }
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     for (size_t i = 0; i < n; i++) {
         uint64_t val = data[i];
@@ -100,8 +101,9 @@ histogram_u64_avx512f(const uint64_t *data, size_t n,
      * that are less than the boundary using _mm512_cmplt_epu64_mask.
      */
     if (memsets(out, (num_boundaries + 1) * sizeof(uint64_t), 0,
-                         (num_boundaries + 1) * sizeof(uint64_t)) != 0)
+                         (num_boundaries + 1) * sizeof(uint64_t)) != 0) {
         return;
+    }
     if (num_boundaries == 0) {
         out[0] = n;
         return;
@@ -121,8 +123,9 @@ histogram_u64_avx512f(const uint64_t *data, size_t n,
             /* For elements where data < boundary, they are in bucket <= b.
              * We want the first boundary where elem < boundary. */
             for (size_t j = 0; j < 8; j++) {
-                if ((lt_mask & (1u << j)) && ge_counts[j] == 0)
+                if ((lt_mask & (1U << j)) && ge_counts[j] == 0) {
                     ge_counts[j] = (uint8_t)(b + 1);
+                }
             }
         }
         for (size_t j = 0; j < 8; j++) {
@@ -146,7 +149,7 @@ histogram_u64_avx512f(const uint64_t *data, size_t n,
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static void
 histogram_u64_neon(const uint64_t *data, size_t n,
@@ -188,14 +191,14 @@ histogram_u64_select(simd_level_t level)
     case SIMD_SSE4_2:  return histogram_u64_sse42;
     case SIMD_SSE2:    return histogram_u64_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return histogram_u64_sve2;
     case SIMD_SVE:     return histogram_u64_sve;
     case SIMD_NEON:    return histogram_u64_neon;
 #endif
     case SIMD_SCALAR:
     default:           return histogram_u64_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(histogram_u64_resolver, histogram_u64_fn_t)
@@ -205,7 +208,7 @@ EXPLICIT_RUNTIME_RESOLVER(histogram_u64_resolver, histogram_u64_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 void histogram_u64(const uint64_t *data, size_t n,

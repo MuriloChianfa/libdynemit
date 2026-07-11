@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: BSL-1.0 */
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 #include <arm_neon.h>
 #include <arm_sve.h>
 #endif
+#include <dynemit/compiler.h>
+#include <dynemit/gini.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dynemit/gini.h>
-#include <dynemit/compiler.h>
 
 /*
  * Gini coefficient for pre-sorted ascending f64 data.
@@ -26,7 +26,9 @@ DYNEMIT_NO_AUTOVECTORIZE
 static double
 gini_f64_scalar(const double *sorted_data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     double weighted_sum = 0.0;
     double total_sum = 0.0;
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
@@ -34,10 +36,16 @@ DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
         weighted_sum += (double)(i + 1) * sorted_data[i];
         total_sum += sorted_data[i];
     }
-    if (total_sum == 0.0) return 0.0;
-    double g = (2.0 * weighted_sum) / ((double)n * total_sum) - ((double)(n + 1) / (double)n);
-    if (g < 0.0) g = 0.0;
-    if (g > 1.0) g = 1.0;
+    if (total_sum == 0.0) {
+        return 0.0;
+    }
+    double g = ((2.0 * weighted_sum) / ((double)n * total_sum)) - ((double)(n + 1) / (double)n);
+    if (g < 0.0) {
+        g = 0.0;
+    }
+    if (g > 1.0) {
+        g = 1.0;
+    }
     return g;
 }
 
@@ -47,7 +55,9 @@ __attribute__((target("sse2")))
 static double
 gini_f64_sse2(const double *sorted_data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     size_t i = 0;
     __m128d vwsum = _mm_setzero_pd();
     __m128d vtsum = _mm_setzero_pd();
@@ -70,10 +80,16 @@ gini_f64_sse2(const double *sorted_data, size_t n)
         weighted_sum += (double)(i + 1) * sorted_data[i];
         total_sum += sorted_data[i];
     }
-    if (total_sum == 0.0) return 0.0;
-    double g = (2.0 * weighted_sum) / ((double)n * total_sum) - ((double)(n + 1) / (double)n);
-    if (g < 0.0) g = 0.0;
-    if (g > 1.0) g = 1.0;
+    if (total_sum == 0.0) {
+        return 0.0;
+    }
+    double g = ((2.0 * weighted_sum) / ((double)n * total_sum)) - ((double)(n + 1) / (double)n);
+    if (g < 0.0) {
+        g = 0.0;
+    }
+    if (g > 1.0) {
+        g = 1.0;
+    }
     return g;
 }
 
@@ -88,7 +104,9 @@ __attribute__((target("avx")))
 static double
 gini_f64_avx(const double *sorted_data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     size_t i = 0;
     __m256d vwsum = _mm256_setzero_pd();
     __m256d vtsum = _mm256_setzero_pd();
@@ -101,7 +119,10 @@ gini_f64_avx(const double *sorted_data, size_t n)
         vidx = _mm256_add_pd(vidx, vstep);
     }
     /* Horizontal reduction */
-    __m128d lo, hi, s, sh;
+    __m128d lo;
+    __m128d hi;
+    __m128d s;
+    __m128d sh;
     lo = _mm256_castpd256_pd128(vwsum);
     hi = _mm256_extractf128_pd(vwsum, 1);
     s = _mm_add_pd(lo, hi);
@@ -118,10 +139,16 @@ gini_f64_avx(const double *sorted_data, size_t n)
         weighted_sum += (double)(i + 1) * sorted_data[i];
         total_sum += sorted_data[i];
     }
-    if (total_sum == 0.0) return 0.0;
-    double g = (2.0 * weighted_sum) / ((double)n * total_sum) - ((double)(n + 1) / (double)n);
-    if (g < 0.0) g = 0.0;
-    if (g > 1.0) g = 1.0;
+    if (total_sum == 0.0) {
+        return 0.0;
+    }
+    double g = ((2.0 * weighted_sum) / ((double)n * total_sum)) - ((double)(n + 1) / (double)n);
+    if (g < 0.0) {
+        g = 0.0;
+    }
+    if (g > 1.0) {
+        g = 1.0;
+    }
     return g;
 }
 
@@ -129,7 +156,9 @@ __attribute__((target("avx2")))
 static double
 gini_f64_avx2(const double *sorted_data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     size_t i = 0;
     __m256d vwsum = _mm256_setzero_pd();
     __m256d vtsum = _mm256_setzero_pd();
@@ -141,7 +170,10 @@ gini_f64_avx2(const double *sorted_data, size_t n)
         vtsum = _mm256_add_pd(vtsum, vdata);
         vidx = _mm256_add_pd(vidx, vstep);
     }
-    __m128d lo, hi, s, sh;
+    __m128d lo;
+    __m128d hi;
+    __m128d s;
+    __m128d sh;
     lo = _mm256_castpd256_pd128(vwsum);
     hi = _mm256_extractf128_pd(vwsum, 1);
     s = _mm_add_pd(lo, hi);
@@ -158,10 +190,16 @@ gini_f64_avx2(const double *sorted_data, size_t n)
         weighted_sum += (double)(i + 1) * sorted_data[i];
         total_sum += sorted_data[i];
     }
-    if (total_sum == 0.0) return 0.0;
-    double g = (2.0 * weighted_sum) / ((double)n * total_sum) - ((double)(n + 1) / (double)n);
-    if (g < 0.0) g = 0.0;
-    if (g > 1.0) g = 1.0;
+    if (total_sum == 0.0) {
+        return 0.0;
+    }
+    double g = ((2.0 * weighted_sum) / ((double)n * total_sum)) - ((double)(n + 1) / (double)n);
+    if (g < 0.0) {
+        g = 0.0;
+    }
+    if (g > 1.0) {
+        g = 1.0;
+    }
     return g;
 }
 
@@ -169,7 +207,9 @@ __attribute__((target("avx512f")))
 static double
 gini_f64_avx512f(const double *sorted_data, size_t n)
 {
-    if (n == 0) return 0.0;
+    if (n == 0) {
+        return 0.0;
+    }
     size_t i = 0;
     __m512d vwsum = _mm512_setzero_pd();
     __m512d vtsum = _mm512_setzero_pd();
@@ -187,15 +227,21 @@ gini_f64_avx512f(const double *sorted_data, size_t n)
         weighted_sum += (double)(i + 1) * sorted_data[i];
         total_sum += sorted_data[i];
     }
-    if (total_sum == 0.0) return 0.0;
-    double g = (2.0 * weighted_sum) / ((double)n * total_sum) - ((double)(n + 1) / (double)n);
-    if (g < 0.0) g = 0.0;
-    if (g > 1.0) g = 1.0;
+    if (total_sum == 0.0) {
+        return 0.0;
+    }
+    double g = ((2.0 * weighted_sum) / ((double)n * total_sum)) - ((double)(n + 1) / (double)n);
+    if (g < 0.0) {
+        g = 0.0;
+    }
+    if (g > 1.0) {
+        g = 1.0;
+    }
     return g;
 }
 #endif
 
-#if defined(__aarch64__)
+#ifdef __aarch64__
 
 static double
 gini_f64_neon(const double *sorted_data, size_t n)
@@ -314,14 +360,14 @@ gini_f64_select(simd_level_t level)
     case SIMD_SSE4_2:  return gini_f64_sse42;
     case SIMD_SSE2:    return gini_f64_sse2;
 #endif
-#if defined(__aarch64__)
+#ifdef __aarch64__
     case SIMD_SVE2:    return gini_f64_sve2;
     case SIMD_SVE:     return gini_f64_sve;
     case SIMD_NEON:    return gini_f64_neon;
 #endif
     case SIMD_SCALAR:
     default:           return gini_f64_scalar;
-    }
+}
 }
 
 EXPLICIT_RUNTIME_RESOLVER(gini_f64_resolver, gini_f64_fn_t)
@@ -331,7 +377,7 @@ EXPLICIT_RUNTIME_RESOLVER(gini_f64_resolver, gini_f64_fn_t)
 
 #if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-#elif defined(__aarch64__)
+#elifdef __aarch64__
 __attribute__((target("+sve2,+sve")))
 #endif
 double gini_f64(const double *sorted_data, size_t n)
