@@ -19,6 +19,8 @@
 #include <math.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <dynemit/core.h>
 
 /* ---- Architecture string ---- */
@@ -416,7 +418,7 @@ bench_parse_opts(int argc, char **argv, bench_opts_t *opts,
 
 /* ---- Auto-detect file output ---- */
 
-static FILE *bench_saved_stdout;
+static int   bench_stdout_saved = -1;
 static char  bench_auto_filename[512];
 
 static int
@@ -447,13 +449,26 @@ bench_auto_detect_open(const char *feature, simd_level_t lvl)
     snprintf(bench_auto_filename, sizeof(bench_auto_filename),
              "%s/%s_%s.csv", dir, feature, sl);
 
-    bench_saved_stdout = stdout;
-    stdout = fopen(bench_auto_filename, "w");
-    if (!stdout) {
-        fprintf(stderr, "Error: cannot create '%s'\n", bench_auto_filename);
-        stdout = bench_saved_stdout;
+    bench_stdout_saved = dup(STDOUT_FILENO);
+    if (bench_stdout_saved < 0) {
+        fprintf(stderr, "Error: cannot dup stdout\n");
         return -1;
     }
+    int fd = open(bench_auto_filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) {
+        fprintf(stderr, "Error: cannot create '%s'\n", bench_auto_filename);
+        close(bench_stdout_saved);
+        bench_stdout_saved = -1;
+        return -1;
+    }
+    if (dup2(fd, STDOUT_FILENO) < 0) {
+        fprintf(stderr, "Error: cannot redirect stdout to '%s'\n", bench_auto_filename);
+        close(fd);
+        close(bench_stdout_saved);
+        bench_stdout_saved = -1;
+        return -1;
+    }
+    close(fd);
     fprintf(stderr, "SIMD level: %s\n", simd_level_name(lvl));
     fprintf(stderr, "Writing results to: %s\n", bench_auto_filename);
     return 0;
@@ -462,10 +477,11 @@ bench_auto_detect_open(const char *feature, simd_level_t lvl)
 static void
 bench_auto_detect_close(void)
 {
-    if (bench_saved_stdout) {
-        fclose(stdout);
-        stdout = bench_saved_stdout;
-        bench_saved_stdout = NULL;
+    if (bench_stdout_saved >= 0) {
+        fflush(stdout);
+        dup2(bench_stdout_saved, STDOUT_FILENO);
+        close(bench_stdout_saved);
+        bench_stdout_saved = -1;
         fprintf(stderr, "Results saved to: %s\n", bench_auto_filename);
     }
 }

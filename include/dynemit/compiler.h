@@ -55,10 +55,11 @@
 #endif
 
 /*
- * IFUNC dispatch is incompatible with ASan/TSan/UBSan: resolvers run during
- * ELF relocation before sanitizer runtimes initialize.  When DYNEMIT_NO_IFUNC
- * is set (e.g. via DYNEMIT_SANITIZE builds), public APIs use constructor-time
- * resolver calls instead of GNU ifunc.
+ * IFUNC dispatch is disabled when DYNEMIT_NO_IFUNC is set.  Public APIs then
+ * use constructor-time resolver calls instead of GNU ifunc.  This is required
+ * for:
+ *   - ASan/TSan/UBSan builds (resolvers run before sanitizer init)
+ *   - musl libc (GCC rejects ifunc on musl targets)
  */
 #if defined(DYNEMIT_NO_IFUNC)
 #  define DYNEMIT_IFUNC_SETUP(fn_t, api, resolver)                        \

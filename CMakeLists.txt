@@ -18,6 +18,7 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 include(CompilerChecks)
+include(LibcChecks)
 
 option(DYNEMIT_TS "Thread-safe scratch TLS" OFF)
 
@@ -173,6 +174,7 @@ message(STATUS "Architecture:      ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "x86 SIMD Support:  ${X86_ARCH}")
 message(STATUS "ARM SIMD Support:  ${ARM_ARCH}")
 message(STATUS "Thread-safe (DYNEMIT_TS): ${DYNEMIT_TS}")
+message(STATUS "musl libc:         ${DYNEMIT_MUSL_LIBC}")
 message(STATUS "Install prefix:    ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "============================================")
 message(STATUS "")

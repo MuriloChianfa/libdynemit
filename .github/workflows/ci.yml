@@ -53,6 +53,34 @@ jobs:
       run: |
         cmake -B build-list -DLIST_FEATURES=ON || true
 
+  build-and-test-c-musl:
+    name: C Tests (musl/Alpine, Release, x86_64)
+    runs-on: ubuntu-latest
+    container: alpine:3.22
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: apk add --no-cache build-base cmake linux-headers git
+
+    - name: Verify GCC version
+      run: |
+        gcc --version
+        ldd --version || true
+
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build -j$(nproc)
+
+    - name: Run C tests
+      run: |
+        cd build
+        ctest --output-on-failure --verbose -R "^test_(features|vector_ops|thread_safe_detection|resolver_macro)$"
+
   build-and-test-cpp:
     name: C++ Tests (GCC ${{ matrix.gcc-version }}, ${{ matrix.build-type }}, ${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
