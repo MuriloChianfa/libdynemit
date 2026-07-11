@@ -1,12 +1,33 @@
 codecov:
   require_ci_to_pass: false
 
+flag_management:
+  default_rules:
+    carryforward: true
+  individual_flags:
+    - name: x86_native
+      carryforward: true
+    - name: x86_sde
+      carryforward: true
+    - name: x86_ts
+      carryforward: true
+    - name: aarch64_native
+      carryforward: true
+    - name: aarch64_sve
+      carryforward: true
+
 coverage:
   status:
     project:
       default:
         target: auto
         threshold: 1%
+        flags:
+          - x86_native
+          - x86_sde
+          - x86_ts
+          - aarch64_native
+          - aarch64_sve
     patch:
       default:
         target: 70%

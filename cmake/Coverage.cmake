@@ -1,4 +1,7 @@
 option(DYNEMIT_COVERAGE "Build with code coverage instrumentation (requires GCC + lcov)" OFF)
+set(DYNEMIT_COVERAGE_TEST_WRAPPER ""
+    CACHE STRING
+    "Optional emulator wrapper for coverage tests (e.g. 'sde64 -spr --'). Empty uses ctest.")
 
 if(DYNEMIT_COVERAGE)
     if(NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
@@ -16,9 +19,20 @@ if(DYNEMIT_COVERAGE)
                     --ignore-errors negative,negative
                     --ignore-errors unused,unused)
 
+    set(_coverage_run_tests
+        ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure)
+    if(DYNEMIT_COVERAGE_TEST_WRAPPER)
+        set(_coverage_run_tests
+            ${CMAKE_COMMAND} -E env
+                "DYNEMIT_TEST_WRAPPER=${DYNEMIT_COVERAGE_TEST_WRAPPER}"
+            ${CMAKE_SOURCE_DIR}/scripts/run_tests_under_emu.sh
+            --build-dir ${CMAKE_BINARY_DIR})
+        message(STATUS "Coverage test wrapper: ${DYNEMIT_COVERAGE_TEST_WRAPPER}")
+    endif()
+
     add_custom_target(coverage
         COMMAND ${LCOV} --zerocounters --directory ${CMAKE_BINARY_DIR}
-        COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure
+        COMMAND ${_coverage_run_tests}
         COMMAND ${LCOV} --capture --directory ${CMAKE_BINARY_DIR}
                 --output-file coverage_raw.info
                 --rc branch_coverage=1

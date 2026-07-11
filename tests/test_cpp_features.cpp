@@ -31,12 +31,13 @@ TEST(CppFeatures, SimdLevelNames) {
 TEST(CppFeatures, RuntimeDetection) {
     simd_level_t detected    = detect_simd_level();
     simd_level_t detected_ts = detect_simd_level_ts();
+    simd_level_t max_level   = DYNEMIT_SIMD_LEVELS[DYNEMIT_N_LEVELS - 1];
 
     EXPECT_EQ(detected, detected_ts)
         << "detect_simd_level() and detect_simd_level_ts() disagree";
 
     EXPECT_GE(static_cast<int>(detected), static_cast<int>(SIMD_SCALAR));
-    EXPECT_LE(static_cast<int>(detected), static_cast<int>(SIMD_AVX512_VBMI2));
+    EXPECT_LE(static_cast<int>(detected), static_cast<int>(max_level));
 }
 
 TEST(CppFeatures, FeatureList) {

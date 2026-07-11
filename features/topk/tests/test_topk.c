@@ -25,6 +25,15 @@ void test_topk_ratios_single(void)
     TEST_ASSERT_DOUBLE_WITHIN(0.01, 1.0, ratios[0]);
 }
 
+void test_topk_ratios_empty(void)
+{
+    size_t ks[] = {1, 3};
+    double ratios[2] = {0.42, 0.42};
+    topk_ratios_f64(NULL, 0, 0, ks, 2, ratios);
+    TEST_ASSERT_DOUBLE_WITHIN(1e-9, 0.0, ratios[0]);
+    TEST_ASSERT_DOUBLE_WITHIN(1e-9, 0.0, ratios[1]);
+}
+
 void test_topk_ratios_large(void)
 {
     uint64_t data[256];
@@ -74,6 +83,7 @@ int main(void)
 
     RUN_TEST(test_topk_ratios);
     RUN_TEST(test_topk_ratios_single);
+    RUN_TEST(test_topk_ratios_empty);
     RUN_TEST(test_topk_ratios_large);
 
     RUN_TEST(test_topk_ratios_all_variants);

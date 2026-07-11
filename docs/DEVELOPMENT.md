@@ -75,6 +75,62 @@ cmake --build build --target coverage
 Open `build/coverage_report/index.html` in a browser. Requires GCC (for gcov),
 `lcov`, and `genhtml`.
 
+### CI coverage matrix
+
+Codecov merges five coverage flags so every compiled ISA path is exercised:
+
+| Flag | Runner | Purpose |
+|------|--------|---------|
+| `x86_native` | `gcc:14` container on x86 | Scalar through host-max x86 (typically AVX2) |
+| `x86_sde` | Ubuntu + Intel SDE `-spr` | AVX-512F and AVX-512-VBMI2 kernel bodies |
+| `x86_ts` | Ubuntu, `DYNEMIT_TS=ON` | Thread-safe TLS scratch paths in entropy/hll |
+| `aarch64_native` | `ubuntu-24.04-arm` | Scalar through host-max aarch64 (NEON/SVE) |
+| `aarch64_sve` | ARM + QEMU user-mode | SVE/SVE2 when the host CPU reports below SVE2 |
+
+Each job uploads `build/coverage.info` with its flag; Codecov unions hits across
+flags (see `.codecov.yml` carryforward rules).
+
+### Emulator-backed coverage (local)
+
+When the host CPU cannot execute AVX-512 or SVE kernels, run tests under an
+emulator wrapper instead of bare `ctest`:
+
+```bash
+# Install Intel SDE (x86_64 only), then:
+./scripts/install_intel_sde.sh /opt/intel-sde
+export SDE_BIN=/opt/intel-sde/sde64
+
+cmake -B build-sde -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON \
+  "-DDYNEMIT_COVERAGE_TEST_WRAPPER=${SDE_BIN} -spr --"
+cmake --build build-sde -j$(nproc)
+
+# Verify the emulator exposes AVX-512 before collecting coverage:
+"${SDE_BIN}" -spr -- ./build-sde/dynemit_simd_level_probe 5
+
+cmake --build build-sde --target coverage
+```
+
+Alternative without reconfiguring CMake:
+
+```bash
+export DYNEMIT_TEST_WRAPPER="${SDE_BIN} -spr --"
+./scripts/run_tests_under_emu.sh --build-dir build-sde --emu "${SDE_BIN}" -spr --
+# then run lcov capture manually, or use the coverage target with the wrapper set
+```
+
+On aarch64 hosts that lack SVE2, use QEMU user-mode:
+
+```bash
+cmake -B build-sve -DCMAKE_BUILD_TYPE=Debug -DDYNEMIT_COVERAGE=ON \
+  "-DDYNEMIT_COVERAGE_TEST_WRAPPER=qemu-aarch64 -cpu max,sve=on,sve2=on --"
+cmake --build build-sve -j$(nproc)
+qemu-aarch64 -cpu max,sve=on,sve2=on -- ./build-sve/dynemit_simd_level_probe 11
+cmake --build build-sve --target coverage
+```
+
+The `dynemit_simd_level_probe` binary (built when `DYNEMIT_COVERAGE=ON`) prints
+`detect_simd_level()` and exits non-zero when below the required floor.
+
 ## Static Analysis (clang-tidy)
 
 Requires clang and clang-tidy. Configure a dedicated clang build so `compile_commands.json` reflects clang

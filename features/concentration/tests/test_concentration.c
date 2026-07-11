@@ -42,6 +42,24 @@ void test_concentration_single_element(void)
     TEST_ASSERT_TRUE(isfinite(result.concentration));
 }
 
+void test_concentration_empty(void)
+{
+    size_t ks[] = {1, 3};
+    double topk_buf[2] = {0.42, 0.42};
+    concentration_result_t result = {
+        .topk_ratios = topk_buf,
+        .heavy_tail_index = 0.42,
+        .concentration = 0.42,
+    };
+
+    concentration_f64(NULL, 0, 0, ks, 2, &result);
+
+    TEST_ASSERT_DOUBLE_WITHIN(1e-9, 0.0, result.topk_ratios[0]);
+    TEST_ASSERT_DOUBLE_WITHIN(1e-9, 0.0, result.topk_ratios[1]);
+    TEST_ASSERT_DOUBLE_WITHIN(1e-9, 0.0, result.heavy_tail_index);
+    TEST_ASSERT_DOUBLE_WITHIN(1e-9, 0.0, result.concentration);
+}
+
 void test_concentration_large(void)
 {
     uint64_t data[256];
@@ -105,6 +123,7 @@ int main(void)
 
     RUN_TEST(test_concentration_basic);
     RUN_TEST(test_concentration_single_element);
+    RUN_TEST(test_concentration_empty);
     RUN_TEST(test_concentration_large);
 
     RUN_TEST(test_concentration_all_variants);

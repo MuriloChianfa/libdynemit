@@ -695,6 +695,8 @@ cmake --build build-cov --target coverage
 
 Open `build-cov/coverage_report/index.html` in a browser. The coverage target zeroes counters, runs the full test suite, captures line/function/branch data, and filters to only project source files.
 
+CI uploads merged coverage from five jobs (x86 native, x86 SDE AVX-512, x86 TLS, aarch64 native, aarch64 QEMU SVE). See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#ci-coverage-matrix) for local SDE/QEMU usage.
+
 </details>
 
 <details>

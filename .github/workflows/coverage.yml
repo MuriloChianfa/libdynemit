@@ -8,44 +8,155 @@ on:
 
 jobs:
   coverage:
-    name: Code Coverage (GCC 14)
-    runs-on: ubuntu-latest
-    container: gcc:14
+    name: Coverage (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container != '' && matrix.container || null }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: x86-native
+            runner: ubuntu-latest
+            container: gcc:14
+            codecov_flag: x86_native
+            cmake_extra: ""
+            probe_cmd: ""
+            wrapper: ""
+            artifact: coverage-report-x86-native
+
+          - name: x86-sde
+            runner: ubuntu-latest
+            container: ""
+            codecov_flag: x86_sde
+            cmake_extra: ""
+            probe_cmd: sde
+            wrapper: sde
+            artifact: coverage-report-x86-sde
+
+          - name: x86-ts
+            runner: ubuntu-latest
+            container: ""
+            codecov_flag: x86_ts
+            cmake_extra: -DDYNEMIT_TS=ON
+            probe_cmd: ""
+            wrapper: ""
+            artifact: coverage-report-x86-ts
+
+          - name: aarch64-native
+            runner: ubuntu-24.04-arm
+            container: ""
+            codecov_flag: aarch64_native
+            cmake_extra: ""
+            probe_cmd: ""
+            wrapper: ""
+            artifact: coverage-report-aarch64-native
+
+          - name: aarch64-sve
+            runner: ubuntu-24.04-arm
+            container: ""
+            codecov_flag: aarch64_sve
+            cmake_extra: ""
+            probe_cmd: qemu_sve
+            wrapper: qemu_sve
+            artifact: coverage-report-aarch64-sve
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install dependencies (Debian/Ubuntu)
+      if: matrix.container == ''
+      run: |
+        sudo apt update
+        sudo apt install -y cmake lcov gcc g++ curl
+
+    - name: Install dependencies (GCC container)
+      if: matrix.container != ''
       run: |
         apt update
         apt install -y cmake lcov
 
+    - name: Install Intel SDE
+      if: matrix.wrapper == 'sde'
+      run: ./scripts/install_intel_sde.sh
+
+    - name: Install QEMU user-mode (aarch64 SVE)
+      if: matrix.probe_cmd == 'qemu_sve'
+      run: sudo apt install -y qemu-user
+
     - name: Configure CMake
       run: |
-        cmake -B build \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DDYNEMIT_COVERAGE=ON
+        set -euo pipefail
+        if [[ "${{ matrix.wrapper }}" == "sde" ]]; then
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DDYNEMIT_COVERAGE=ON \
+            "-DDYNEMIT_COVERAGE_TEST_WRAPPER=${SDE_BIN} -spr --" \
+            ${{ matrix.cmake_extra }}
+        elif [[ "${{ matrix.wrapper }}" == "qemu_sve" ]]; then
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DDYNEMIT_COVERAGE=ON \
+            "-DDYNEMIT_COVERAGE_TEST_WRAPPER=qemu-aarch64 -cpu max,sve=on,sve2=on --" \
+            ${{ matrix.cmake_extra }}
+        else
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DDYNEMIT_COVERAGE=ON \
+            ${{ matrix.cmake_extra }}
+        fi
 
     - name: Build
       run: cmake --build build -j$(nproc)
 
+    - name: Log native SIMD level
+      run: ./build/dynemit_simd_level_probe 0
+
+    - name: Verify SDE exposes AVX-512
+      if: matrix.probe_cmd == 'sde'
+      run: "${SDE_BIN} -spr -- ./build/dynemit_simd_level_probe 5"
+
+    - name: Check whether QEMU SVE emulation is required
+      if: matrix.probe_cmd == 'qemu_sve'
+      id: sve_need
+      run: |
+        if ./build/dynemit_simd_level_probe 12; then
+          echo "Host already reports SVE2; QEMU SVE job is a no-op for coverage."
+          echo "needed=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "Host below SVE2; coverage will run under QEMU with SVE enabled."
+          echo "needed=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Verify QEMU exposes SVE
+      if: matrix.probe_cmd == 'qemu_sve' && steps.sve_need.outputs.needed == 'true'
+      run: qemu-aarch64 -cpu max,sve=on,sve2=on -- ./build/dynemit_simd_level_probe 11
+
+    - name: Skip redundant QEMU SVE coverage
+      if: matrix.probe_cmd == 'qemu_sve' && steps.sve_need.outputs.needed == 'false'
+      run: |
+        echo "Skipping coverage upload; aarch64-native already covers SVE2 on this runner."
+        exit 0
+
     - name: Generate coverage report
+      if: matrix.probe_cmd != 'qemu_sve' || steps.sve_need.outputs.needed == 'true'
       run: cmake --build build --target coverage
 
     - name: Upload to Codecov
+      if: matrix.probe_cmd != 'qemu_sve' || steps.sve_need.outputs.needed == 'true'
       uses: codecov/codecov-action@v4
       with:
         files: build/coverage.info
-        flags: unittests
+        flags: ${{ matrix.codecov_flag }}
         fail_ci_if_error: false
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Upload HTML coverage report
+      if: always() && (matrix.probe_cmd != 'qemu_sve' || steps.sve_need.outputs.needed != 'false')
       uses: actions/upload-artifact@v4
-      if: always()
       with:
-        name: coverage-report
+        name: ${{ matrix.artifact }}
         path: build/coverage_report/
         retention-days: 30
+        if-no-files-found: ignore

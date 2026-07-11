@@ -31,6 +31,14 @@ target_include_directories(dynemit_core
 # Link math library if needed
 target_link_libraries(dynemit_core PUBLIC m)
 
+if(DYNEMIT_COVERAGE)
+    add_executable(dynemit_simd_level_probe
+        ${PROJECT_SOURCE_DIR}/scripts/simd_level_probe.c)
+    target_link_libraries(dynemit_simd_level_probe PRIVATE dynemit_core m)
+    set_target_properties(dynemit_simd_level_probe PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+endif()
+
 # Installation
 include(GNUInstallDirs)
 

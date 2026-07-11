@@ -28,6 +28,12 @@ void test_gini_f64_unequal(void)
     TEST_ASSERT_TRUE(gini_f64(d, 5) > 0.5);
 }
 
+void test_gini_f64_all_zero(void)
+{
+    double d[] = {0.0, 0.0, 0.0, 0.0};
+    TEST_ASSERT_DOUBLE_WITHIN(1e-9, 0.0, gini_f64(d, 4));
+}
+
 void test_gini_u64_empty(void)
 {
     TEST_ASSERT_DOUBLE_WITHIN(1e-9, 0.0, gini_u64(NULL, 0));
@@ -43,6 +49,12 @@ void test_gini_u64_equal(void)
 {
     uint64_t d[] = {10, 10, 10, 10};
     TEST_ASSERT_DOUBLE_WITHIN(0.01, 0.0, gini_u64(d, 4));
+}
+
+void test_gini_u64_all_zero(void)
+{
+    uint64_t d[] = {0, 0, 0, 0};
+    TEST_ASSERT_DOUBLE_WITHIN(1e-9, 0.0, gini_u64(d, 4));
 }
 
 static void run_f64_variant_sizes(gini_f64_fn_t fn)
@@ -111,10 +123,12 @@ int main(void)
     RUN_TEST(test_gini_f64_single);
     RUN_TEST(test_gini_f64_equal);
     RUN_TEST(test_gini_f64_unequal);
+    RUN_TEST(test_gini_f64_all_zero);
 
     RUN_TEST(test_gini_u64_empty);
     RUN_TEST(test_gini_u64_single);
     RUN_TEST(test_gini_u64_equal);
+    RUN_TEST(test_gini_u64_all_zero);
 
     RUN_TEST(test_gini_f64_all_variants);
     RUN_TEST(test_gini_u64_all_variants);
