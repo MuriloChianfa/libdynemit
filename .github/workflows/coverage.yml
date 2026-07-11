@@ -147,6 +147,8 @@ jobs:
       uses: codecov/codecov-action@v4
       with:
         files: build/coverage.info
+        disable_search: true
+        plugins: noop
         flags: ${{ matrix.codecov_flag }}
         fail_ci_if_error: false
       env:
