@@ -8,8 +8,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
-    && apt-get update -qq \
-    && apt-get install -y -qq --no-install-recommends \
+    && apt update -qq \
+    && apt install -y -qq --no-install-recommends \
         qemu-user
 
 WORKDIR /work

@@ -109,35 +109,11 @@ void process_data(float *data, size_t n)
     __attribute__((ifunc("process_data_resolver")));
 ```
 
-## Compiler Warnings
-
-The `EXPLICIT_RUNTIME_RESOLVER` macro converts function pointers to `void*`, which generates `-Wpedantic` warnings. These warnings are expected and safe for IFUNC resolvers. You can suppress them:
-
-```c
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-
-EXPLICIT_RUNTIME_RESOLVER(my_resolver)
-{
-    // ... resolver logic
-}
-
-#pragma GCC diagnostic pop
-```
-
-Or project-wide in CMake:
-
-```cmake
-target_compile_options(my_target PRIVATE -Wno-pedantic)
-```
-
 ## Best Practices
 
-1. **Always use `detect_simd_level_ts()`** inside IFUNC resolvers
-2. **Always use `EXPLICIT_RUNTIME_RESOLVER`** instead of writing resolvers directly
-3. **Always have a default/fallback case** in your switch statement
-4. **Test with different SIMD levels** using environment overrides if possible
-5. **Document the `LD_PRELOAD` workaround** for users of your library
+1. **Always use `EXPLICIT_RUNTIME_RESOLVER`** instead of writing resolvers directly
+2. **Always have a default/fallback case** in your switch statement
+3. **Test with different SIMD levels** using environment overrides if possible
 
 ## Troubleshooting
 
@@ -187,8 +163,6 @@ The IFUNC resolver mechanism is supported by both GCC and Clang:
 - **GCC**: Full `ifunc` support on Linux/ELF targets.
 - **Clang**: `ifunc` support since Clang 4.0 on Linux/ELF targets.
 - **macOS/non-ELF**: Not supported by either compiler (ELF-only feature).
-
-The `#pragma GCC diagnostic` directives used to suppress `-Wpedantic` warnings are also accepted by Clang (Clang treats them as aliases).
 
 ## References
 

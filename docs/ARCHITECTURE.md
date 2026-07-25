@@ -359,23 +359,6 @@ On non-x86 systems:
 - MSVC (different intrinsics model)
 - macOS/non-ELF platforms (no `ifunc` support)
 
-## Future Enhancements
-
-### Potential Improvements
-
-1. **ARM NEON support**: Add ARM-specific implementations
-2. **Multi-architecture**: Support both x86 and ARM in same library
-3. **AVX-512 subsets**: Use AVX-512BW, AVX-512DQ, etc.
-4. **Runtime benchmarking**: Choose implementation based on actual performance
-5. **Compile-time options**: Allow disabling specific SIMD levels
-
-### Scalability
-
-The current architecture scales well up to ~10-20 features. Beyond that, consider:
-- Feature categorization (`features/math/`, `features/crypto/`, etc.)
-- Automated CMake feature discovery
-- Plugin system for dynamic feature loading
-
 ## References
 
 - [GCC Function Attributes](https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html)

@@ -156,18 +156,16 @@ This also runs in CI (see the `clang-tidy` job in `.github/workflows/ci.yml`).
 ## Mutation Testing (Mull)
 
 Mull injects mutations into compiled bitcode to verify test quality. It requires
-Clang and a matching Mull package (LLVM major must match Clang).
+Clang and a matching Mull package (Clang x LLVM matching major).
 
-Install from [GitHub Releases](https://github.com/mull-project/mull/releases)
-(preferred — the Cloudsmith apt mirror is often unreachable):
+Install from the official Mull project [GitHub Releases](https://github.com/mull-project/mull/releases):
 
 ```bash
-# Example: Mull 18 for Ubuntu 24.04 amd64 (match your Clang major)
 MULL_VERSION=0.34.0
 MULL_DEB="Mull-18-${MULL_VERSION}-LLVM-18.1.3-ubuntu-amd64-24.04.deb"
 curl -fsSL -o "/tmp/${MULL_DEB}" \
   "https://github.com/mull-project/mull/releases/download/${MULL_VERSION}/${MULL_DEB}"
-sudo apt-get install -y "/tmp/${MULL_DEB}"
+sudo apt install -y "/tmp/${MULL_DEB}"
 ```
 
 Build with the Mull pass plugin enabled:

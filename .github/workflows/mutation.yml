@@ -31,7 +31,7 @@ jobs:
         MULL_DEB="Mull-18-${MULL_VERSION}-LLVM-18.1.3-ubuntu-amd64-24.04.deb"
         curl -fsSL -o "/tmp/${MULL_DEB}" \
           "https://github.com/mull-project/mull/releases/download/${MULL_VERSION}/${MULL_DEB}"
-        sudo apt-get install -y "/tmp/${MULL_DEB}"
+        sudo apt install -y "/tmp/${MULL_DEB}"
         mull-runner-18 --version
 
     - name: Configure CMake

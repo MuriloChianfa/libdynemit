@@ -416,13 +416,6 @@ find . -name "libdynemit_my_feature.a"
    - Static implementations: `my_feature_f32_sse2`, `my_feature_f32_avx`, etc.
    - Resolver: `my_feature_f32_resolver`
 
-## Example: Existing Features
-
-Study these existing features as reference:
-- `features/vector_add/` - Simple element-wise addition
-- `features/vector_mul/` - Element-wise multiplication
-- `features/vector_sub/` - Element-wise subtraction
-
 ## Troubleshooting
 
 ### Build Errors

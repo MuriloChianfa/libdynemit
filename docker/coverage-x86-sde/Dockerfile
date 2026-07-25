@@ -10,8 +10,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=bind,from=scripts,source=install_intel_sde.sh,target=/tmp/install_intel_sde.sh \
     rm -f /etc/apt/apt.conf.d/docker-clean \
-    && apt-get update -qq \
-    && apt-get install -y -qq --no-install-recommends \
+    && apt update -qq \
+    && apt install -y -qq --no-install-recommends \
         curl \
         xz-utils \
     && bash /tmp/install_intel_sde.sh /opt/intel-sde
