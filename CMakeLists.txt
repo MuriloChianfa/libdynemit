@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(simd-dynamic-dispatch
-    VERSION 1.2.0
+    VERSION 1.3.0
     DESCRIPTION "SIMD Dynamic Dispatch Library"
     LANGUAGES C
 )
@@ -195,7 +195,7 @@ message(STATUS "C Compiler Ver:    ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "Architecture:      ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "x86 SIMD Support:  ${X86_ARCH}")
 message(STATUS "ARM SIMD Support:  ${ARM_ARCH}")
-message(STATUS "Thread-safe (DYNEMIT_TS): ${DYNEMIT_TS}")
+message(STATUS "Thread-safe:       ${DYNEMIT_TS}")
 message(STATUS "Build tests:       ${DYNEMIT_BUILD_TESTS}")
 message(STATUS "Build benchmarks:  ${DYNEMIT_BUILD_BENCHMARKS}")
 message(STATUS "musl libc:         ${DYNEMIT_MUSL_LIBC}")

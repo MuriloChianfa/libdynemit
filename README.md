@@ -58,8 +58,8 @@ Download pre-built packages from [GitHub Releases](https://github.com/MuriloChia
 <summary><b>Debian/Ubuntu</b></summary>
 
 ```bash
-wget https://github.com/MuriloChianfa/libdynemit/releases/download/v1.2.0/libdynemit_1.2.0_amd64.deb
-sudo dpkg -i libdynemit_1.2.0_amd64.deb
+wget https://github.com/MuriloChianfa/libdynemit/releases/download/v1.3.0/libdynemit_1.3.0_amd64.deb
+sudo dpkg -i libdynemit_1.3.0_amd64.deb
 ```
 
 </details>
@@ -70,8 +70,8 @@ sudo dpkg -i libdynemit_1.2.0_amd64.deb
 **Runtime package**:
 
 ```bash
-wget https://github.com/MuriloChianfa/libdynemit/releases/download/v1.2.0/libdynemit-1.2.0-1.fc40.x86_64.rpm
-sudo dnf install libdynemit-1.2.0-1.fc40.x86_64.rpm
+wget https://github.com/MuriloChianfa/libdynemit/releases/download/v1.3.0/libdynemit-1.3.0-1.fc40.x86_64.rpm
+sudo dnf install libdynemit-1.3.0-1.fc40.x86_64.rpm
 ```
 
 </details>
@@ -113,7 +113,7 @@ gpg:               imported: 1
 **Verify a package signature:**
 
 ```bash
-gpg --verify libdynemit_1.2.0_amd64.deb.asc libdynemit_1.2.0_amd64.deb
+gpg --verify libdynemit_1.3.0_amd64.deb.asc libdynemit_1.3.0_amd64.deb
 ```
 
 If the signature is valid, you should see:
@@ -128,8 +128,8 @@ If you see "BAD signature", **do not use** the binary - it may have been tampere
 #### Verify Checksums
 
 ```bash
-curl -LO https://github.com/MuriloChianfa/libdynemit/releases/download/v1.2.0/SHA256SUMS
-curl -LO https://github.com/MuriloChianfa/libdynemit/releases/download/v1.2.0/SHA256SUMS.asc
+curl -LO https://github.com/MuriloChianfa/libdynemit/releases/download/v1.3.0/SHA256SUMS
+curl -LO https://github.com/MuriloChianfa/libdynemit/releases/download/v1.3.0/SHA256SUMS.asc
 gpg --verify SHA256SUMS.asc SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
 ```
@@ -187,7 +187,7 @@ mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 
 # Compile
-make
+make -j$(nproc)
 ```
 
 ### Installing from Source
@@ -203,7 +203,7 @@ sudo make install
 <summary>View installed files</summary>
 
 **Shared library**:
-- `/usr/local/lib/libdynemit.so.1.2.0` (versioned shared library)
+- `/usr/local/lib/libdynemit.so.1.3.0` (versioned shared library)
 - `/usr/local/lib/libdynemit.so.1` (SONAME symlink)
 - `/usr/local/lib/libdynemit.so` (development symlink)
 

@@ -77,6 +77,13 @@ install -D -m 0644 %{_builddir}/README.md \
 %{_libdir}/pkgconfig/libdynemit.pc
 
 %changelog
+* Sun Jul 26 2026 MuriloChianfa <murilo.chianfa@outlook.com> - 1.3.0-1
+- Version 1.3.0 release
+- New features: HyperLogLog++, radixs (u16/u32/u64), fast_log2, entropy_u32
+- AArch64 NEON/SVE support, musl libc builds, and aarch64 CI/benchmarks
+- Hardened mem ops (_s variants), aarch64 UB fixes, and warnings-as-errors
+- Added memcheck/sanitizer pipelines, consumer smoke tests, and clang-tidy
+
 * Fri Feb 20 2026 MuriloChianfa <murilo.chianfa@outlook.com> - 1.2.0-1
 - Version 1.2.0 release
 - Major refactoring and 18 new feature modules
