@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gcc-version: [13, 14, 15]
+        gcc-version: [13, 14, 15, 16]
         build-type: [Debug, Release]
         arch: [x86_64, aarch64]
         include:
@@ -88,7 +88,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gcc-version: [13, 14, 15]
+        gcc-version: [13, 14, 15, 16]
         build-type: [Debug, Release]
         arch: [x86_64, aarch64]
         include:
