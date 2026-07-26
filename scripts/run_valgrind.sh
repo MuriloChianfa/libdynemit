@@ -166,7 +166,7 @@ run_one() {
         return 0
     fi
 
-    echo "FAIL ${feature} (${TOOL}) — see ${log_file}"
+    echo "FAIL ${feature} (${TOOL}) : see ${log_file}"
     # Profiling tools always report success so CI stays green.
     if [[ $IS_CHECKER -eq 1 ]]; then
         return 1

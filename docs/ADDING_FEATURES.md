@@ -1,277 +1,208 @@
 # Adding New Features to Dynemit
 
 This guide explains how to add new SIMD-optimized features to the dynemit library.
+The running example is the existing `max` feature and its `max_u16` variant
+(`features/max/max_u16.c`). Copy that layout when you add your own feature.
 
 ## Overview
 
 The dynemit library uses a modular architecture where each feature:
 - Has its own directory under `features/`
-- Provides multiple SIMD implementations (scalar, SSE2, SSE4.2, AVX, AVX2, AVX-512F, AVX-512 VBMI2)
+- Provides multiple SIMD implementations (scalar, SSE2, SSE4.2, AVX, AVX2, AVX-512F, AVX-512 VBMI2, and on aarch64 NEON/SVE/SVE2)
 - Uses the `ifunc` mechanism (GCC and Clang) for runtime dispatch
 - Can be built as both an individual library and part of the all-in-one bundle
 
 ## Quick Start
 
-To add a new feature called `my_feature`:
+To add a new feature (mirror `max` / `max_u16`):
 
-1. Create feature directory and implementation
-2. Create public header file
-3. Create CMakeLists.txt for the feature
-4. Update main build configuration
-5. Update feature registry
-6. Add tests
-7. Update documentation
+1. Create `features/<name>/` with implementation, tests, and benchmarks
+2. Create public header `include/dynemit/<name>.h`
+3. Create `features/<name>/CMakeLists.txt`
+4. Register the feature in `src/dynemit_features.c` and `cmake/ListFeatures.cmake`
+5. Include the header from `include/dynemit.h`
+6. Build Debug and run `ctest`
+
+The root `CMakeLists.txt` auto-discovers every directory under `features/`.
 
 ## Detailed Steps
 
 ### 1. Create Feature Directory Structure
 
+For `max` the tree looks like:
+
 ```bash
-mkdir -p features/my_feature
+features/max/
+  ├── max_u16.c             # u16 reduction (also max_f64.c, max_u32.c, …)
+  ├── CMakeLists.txt
+  ├── tests/
+  │   └── test_max.c
+  └── benchmarks/
+      ├── bench_max_f64.c
+      └── bench_max_u32.c
+```
+
+For a new feature:
+
+```bash
+mkdir -p features/<name>/tests features/<name>/benchmarks
 ```
 
 ### 2. Create Implementation File
 
-Create `features/my_feature/my_feature.c`:
+Create one `.c` file per type variant. Example: `features/max/max_u16.c`.
+Sketch of the x86 path (see the real file for aarch64 and full SIMD bodies):
 
 ```c
+#if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
-#include <stddef.h>
-#include <dynemit/core.h>
+#elifdef __aarch64__
+#include <arm_neon.h>
+#include <arm_sve.h>
+#endif
 #include <dynemit/compiler.h>
+#include <dynemit/max.h>
+#include <stddef.h>
+#include <stdint.h>
 
-// Scalar version - disable auto-vectorization
-__attribute__((target("default")))
+#if defined(__x86_64__) || defined(__i386__)
+DYNEMIT_TARGET_DEFAULT
+#endif
 DYNEMIT_NO_AUTOVECTORIZE
-static void
-my_feature_f32_scalar(const float *a, const float *b, float *out, size_t n)
+static double
+max_u16_scalar(const uint16_t *data, size_t n)
 {
+    if (n == 0) {
+        return 0.0;
+    }
+    uint16_t result = data[0];
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
-    for (size_t i = 0; i < n; i++)
-        out[i] = /* your operation here */;
-}
-
-__attribute__((target("sse2")))
-static void
-my_feature_f32_sse2(const float *a, const float *b, float *out, size_t n)
-{
-    size_t i = 0;
-    const size_t step = 4;  // SSE processes 4 floats
-    for (; i + step <= n; i += step) {
-        __m128 va = _mm_loadu_ps(a + i);
-        __m128 vb = _mm_loadu_ps(b + i);
-        __m128 vc = /* SSE operation */;
-        _mm_storeu_ps(out + i, vc);
+    for (size_t i = 1; i < n; i++) {
+        if (data[i] > result) {
+            result = data[i];
+        }
     }
-    // Scalar tail for remaining elements
-    for (; i < n; i++)
-        out[i] = /* your operation here */;
+    return (double)result;
 }
 
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("sse4.2")))
-static void
-my_feature_f32_sse42(const float *a, const float *b, float *out, size_t n)
+static double
+max_u16_sse42(const uint16_t *data, size_t n)
 {
-    // Same as SSE2 for basic operations, or use SSE4.2-specific intrinsics
-    size_t i = 0;
-    const size_t step = 4;
-    for (; i + step <= n; i += step) {
-        __m128 va = _mm_loadu_ps(a + i);
-        __m128 vb = _mm_loadu_ps(b + i);
-        __m128 vc = /* SSE4.2 operation */;
-        _mm_storeu_ps(out + i, vc);
-    }
-    for (; i < n; i++)
-        out[i] = /* your operation here */;
+    /* horizontal max with _mm_max_epu16 + scalar tail; see max_u16.c */
+    ...
 }
 
-__attribute__((target("avx")))
-static void
-my_feature_f32_avx(const float *a, const float *b, float *out, size_t n)
-{
-    size_t i = 0;
-    const size_t step = 8;  // AVX processes 8 floats
-    for (; i + step <= n; i += step) {
-        __m256 va = _mm256_loadu_ps(a + i);
-        __m256 vb = _mm256_loadu_ps(b + i);
-        __m256 vc = /* AVX operation */;
-        _mm256_storeu_ps(out + i, vc);
-    }
-    for (; i < n; i++)
-        out[i] = /* your operation here */;
-}
+/* Also: max_u16_sse2, max_u16_avx, max_u16_avx2, max_u16_avx512f */
+#endif
 
-__attribute__((target("avx2")))
-static void
-my_feature_f32_avx2(const float *a, const float *b, float *out, size_t n)
+max_u16_fn_t
+max_u16_select(simd_level_t level)
 {
-    size_t i = 0;
-    const size_t step = 8;  // AVX2 processes 8 floats
-    for (; i + step <= n; i += step) {
-        __m256 va = _mm256_loadu_ps(a + i);
-        __m256 vb = _mm256_loadu_ps(b + i);
-        __m256 vc = /* AVX2 operation */;
-        _mm256_storeu_ps(out + i, vc);
-    }
-    for (; i < n; i++)
-        out[i] = /* your operation here */;
-}
-
-__attribute__((target("avx512f")))
-static void
-my_feature_f32_avx512f(const float *a, const float *b, float *out, size_t n)
-{
-    size_t i = 0;
-    const size_t step = 16;  // AVX-512F processes 16 floats
-    for (; i + step <= n; i += step) {
-        __m512 va = _mm512_loadu_ps(a + i);
-        __m512 vb = _mm512_loadu_ps(b + i);
-        __m512 vc = /* AVX-512F operation */;
-        _mm512_storeu_ps(out + i, vc);
-    }
-    for (; i < n; i++)
-        out[i] = /* your operation here */;
-}
-
-// Resolver function for ifunc
-typedef void (*my_feature_f32_func_t)(const float *, const float *, float *, size_t);
-
-static my_feature_f32_func_t
-my_feature_f32_resolver(void)
-{
-    simd_level_t level = detect_simd_level();
-    
     switch (level) {
-    case SIMD_AVX512F: return my_feature_f32_avx512f;
-    case SIMD_AVX2:    return my_feature_f32_avx2;
-    case SIMD_AVX:     return my_feature_f32_avx;
-    case SIMD_SSE4_2:  return my_feature_f32_sse42;
-    case SIMD_SSE2:    return my_feature_f32_sse2;
+#if defined(__x86_64__) || defined(__i386__)
+    case SIMD_AVX512_VBMI2:
+    case SIMD_AVX512F: return max_u16_avx512f;
+    case SIMD_AVX2:    return max_u16_avx2;
+    case SIMD_AVX:     return max_u16_avx;
+    case SIMD_SSE4_2:  return max_u16_sse42;
+    case SIMD_SSE2:    return max_u16_sse2;
+#endif
     case SIMD_SCALAR:
-    default:           return my_feature_f32_scalar;
+    default:           return max_u16_scalar;
     }
 }
 
+EXPLICIT_RUNTIME_RESOLVER(max_u16_resolver, max_u16_fn_t)
+{
+    return max_u16_select(detect_simd_level_ts());
+}
+DYNEMIT_IFUNC_SETUP(max_u16_fn_t, max_u16, max_u16_resolver)
+
+#if defined(__x86_64__) || defined(__i386__)
 __attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-void my_feature_f32(const float *a, const float *b, float *out, size_t n)
-    __attribute__((ifunc("my_feature_f32_resolver")));
+#endif
+double max_u16(const uint16_t *data, size_t n)
+    DYNEMIT_IFUNC_ATTR("max_u16_resolver");
 ```
+
+Prefer the macros in `<dynemit/compiler.h>` / `<dynemit/err.h>`
+(`DYNEMIT_IFUNC_SETUP`, `EXPLICIT_RUNTIME_RESOLVER`, …) rather than hand-rolled
+`ifunc` attributes. Full reference: `features/max/max_u16.c`.
 
 ### 3. Create Public Header
 
-Create `include/dynemit/my_feature.h`:
+`include/dynemit/max.h` declares each type variant and its `_select` API:
 
 ```c
-#ifndef DYNEMIT_MY_FEATURE_H
-#define DYNEMIT_MY_FEATURE_H
+#ifndef DYNEMIT_MAX_H
+#define DYNEMIT_MAX_H
 
 #include <stddef.h>
+#include <stdint.h>
+#include <dynemit/core.h>
 
-/**
- * Brief description of what this feature does.
- * 
- * @param a First input vector
- * @param b Second input vector
- * @param out Output vector
- * @param n Number of elements to process
- */
-void my_feature_f32(const float *a, const float *b, float *out, size_t n);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#endif // DYNEMIT_MY_FEATURE_H
+typedef double (*max_u16_fn_t)(const uint16_t *, size_t);
+
+double max_u16(const uint16_t *data, size_t n);
+
+/** Return the implementation for a specific SIMD level (tests/benchmarks). */
+max_u16_fn_t max_u16_select(simd_level_t level);
+
+/* Likewise max_f64 / max_u32 / max_u64 in the real header */
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* DYNEMIT_MAX_H */
 ```
 
 ### 4. Create Feature CMakeLists.txt
 
-Create `features/my_feature/CMakeLists.txt`:
+`features/max/CMakeLists.txt`:
 
 ```cmake
-# My Feature
-# SIMD-optimized <description>
+# Max Feature
+# SIMD-optimized maximum reductions
 
-# Object library for bundling into all-in-one library
-add_library(my_feature_obj OBJECT 
-    my_feature.c
-)
+file(GLOB MAX_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
 
-target_include_directories(my_feature_obj 
-    PRIVATE
-        ${PROJECT_SOURCE_DIR}/include
-)
+add_library(max_obj OBJECT ${MAX_SOURCES})
+target_include_directories(max_obj PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(max_obj PUBLIC dynemit_core)
+set_target_properties(max_obj PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-target_link_libraries(my_feature_obj PUBLIC dynemit_core)
+add_library(dynemit_max STATIC $<TARGET_OBJECTS:max_obj>)
+target_include_directories(dynemit_max PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(dynemit_max PUBLIC dynemit_core)
 
-# Individual static library
-add_library(dynemit_my_feature STATIC 
-    $<TARGET_OBJECTS:my_feature_obj>
-)
-
-target_include_directories(dynemit_my_feature 
-    PUBLIC
-        ${PROJECT_SOURCE_DIR}/include
-)
-
-target_link_libraries(dynemit_my_feature PUBLIC dynemit_core)
-
-# Installation
 include(GNUInstallDirs)
+install(TARGETS dynemit_max ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/max.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-install(TARGETS dynemit_my_feature
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-
-install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/my_feature.h
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit
-)
-
-# Tests / benchmarks (gated by DYNEMIT_BUILD_TESTS / DYNEMIT_BUILD_BENCHMARKS)
-dynemit_add_feature_test(my_feature)
-dynemit_add_feature_bench(my_feature f32)
+# Tests / benchmarks gated inside cmake/FeatureExtras.cmake
+# (Debug: on by default; Release: -DDYNEMIT_BUILD_TESTS=ON / -DDYNEMIT_BUILD_BENCHMARKS=ON)
+dynemit_add_feature_test(max)
+dynemit_add_feature_bench(max f64)
+dynemit_add_feature_bench(max u32)
 ```
 
-### 5. Update Main CMakeLists.txt
+Helpers live in `cmake/FeatureExtras.cmake`. Optional flags include `FAULT_ALLOC`,
+`PTHREAD`, `LIBS`, and `INCLUDES`; see `entropy` or `histogram` for examples.
 
-Edit `CMakeLists.txt` to add your feature:
+### 5. Register the Feature (no root CMakeLists edit)
 
-**a) Add subdirectory:**
-```cmake
-# Add subdirectories for core and features
-add_subdirectory(src)
-add_subdirectory(features/vector_add)
-add_subdirectory(features/vector_mul)
-add_subdirectory(features/vector_sub)
-add_subdirectory(features/my_feature)  # <-- Add this
-add_subdirectory(bench)
-```
+Features under `features/*/` are discovered automatically. You still need to
+register the feature name in two places:
 
-**b) Add object library to all-in-one library:**
-```cmake
-# Create all-in-one library combining core + all features
-add_library(dynemit STATIC
-    $<TARGET_OBJECTS:dynemit_core_obj>
-    $<TARGET_OBJECTS:vector_add_obj>
-    $<TARGET_OBJECTS:vector_mul_obj>
-    $<TARGET_OBJECTS:vector_sub_obj>
-    $<TARGET_OBJECTS:my_feature_obj>  # <-- Add this
-    src/dynemit_features.c
-)
-```
-
-**c) Update LIST_FEATURES option:**
-```cmake
-if(LIST_FEATURES)
-    message(STATUS "")
-    message(STATUS "=== Available Dynemit Features ===")
-    message(STATUS "  - core              (CPU detection and SIMD level API)")
-    message(STATUS "  - vector_add        (SIMD-optimized vector addition)")
-    message(STATUS "  - vector_mul   (SIMD-optimized vector multiplication)")
-    message(STATUS "  - vector_sub        (SIMD-optimized vector subtraction)")
-    message(STATUS "  - my_feature        (SIMD-optimized <description>)")  # <-- Add this
-    # ... rest of the message
-```
-
-### 6. Update Feature Registry
-
-Edit `src/dynemit_features.c` to include your feature in the all-in-one build:
+**a) Runtime registry.** Edit `src/dynemit_features.c`:
 
 ```c
 const char **
@@ -279,81 +210,58 @@ dynemit_features(void)
 {
     static const char *features[] = {
         "core",
-        "my_feature",         // <-- Add this (alphabetically)
-        "vector_add",
-        "vector_mul",
-        "vector_sub",
-        NULL  // NULL-terminated
+        "add",
+        /* ... */
+        "max",          /* already present for the max feature */
+        nullptr
     };
     return features;
 }
 ```
 
-### 7. Update Umbrella Header
+**b) Configure-time list.** Add a line in `cmake/ListFeatures.cmake`
+(`LIST_FEATURES=ON` output). `max` is already listed there.
 
-Edit `include/dynemit.h` to include your feature header:
+### 6. Update Umbrella Header
+
+Edit `include/dynemit.h` to include your feature header (headers are always
+listed here; modular users can also `#include <dynemit/max.h>` directly):
 
 ```c
-// Features - automatically included when using the all-in-one library
-#ifdef DYNEMIT_ALL_FEATURES
-#include <dynemit/my_feature.h>      // <-- Add this
-#include <dynemit/vector_add.h>
-#include <dynemit/vector_mul.h>
-#include <dynemit/vector_sub.h>
-#endif
-
-// Alternatively, users can include individual feature headers:
-// #include <dynemit/my_feature.h>    // <-- Add this
-// #include <dynemit/vector_add.h>
-// etc.
+#include <dynemit/max.h>   /* already present for max */
 ```
 
-### 8. Add Tests
+### 7. Add Tests and Benchmarks
 
-Create a test in `tests/` to verify correctness:
+Tests live next to the feature. `features/max/tests/test_max.c` covers `max_u16`
+with Unity, including `_select` across SIMD levels:
 
 ```c
-#include <stdio.h>
-#include <math.h>
-#include <dynemit/core.h>
-#include <dynemit/my_feature.h>
+void test_max_u16_basic(void)
+{
+    uint16_t d[] = {500, 100, 300};
+    TEST_ASSERT_DOUBLE_WITHIN(1e-6, 500.0, max_u16(d, 3));
+}
 
-int main(void) {
-    float a[16], b[16], result[16];
-    
-    // Initialize test data
-    for (int i = 0; i < 16; i++) {
-        a[i] = (float)i;
-        b[i] = (float)(i + 1);
+void test_max_u16_all_variants(void)
+{
+    for (int i = 0; i < DYNEMIT_N_LEVELS; i++) {
+        max_u16_fn_t fn = max_u16_select(DYNEMIT_SIMD_LEVELS[i]);
+        /* exercise fn across sizes / tails */
     }
-    
-    // Run your feature
-    my_feature_f32(a, b, result, 16);
-    
-    // Verify correctness
-    for (int i = 0; i < 16; i++) {
-        float expected = /* compute expected value */;
-        if (fabsf(result[i] - expected) > 1e-6f) {
-            printf("FAILED at index %d\n", i);
-            return 1;
-        }
-    }
-    
-    printf("PASSED\n");
-    return 0;
 }
 ```
 
-Add the test to `tests/CMakeLists.txt`:
+Benchmarks use `bench/bench_utils.h`. For `max`, see
+`features/max/benchmarks/bench_max_f64.c` and `bench_max_u32.c`. A u16 bench
+would be registered as `dynemit_add_feature_bench(max u16)` and live at
+`features/max/benchmarks/bench_max_u16.c`.
 
-```cmake
-add_executable(test_my_feature test_my_feature.c)
-target_include_directories(test_my_feature PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_my_feature PRIVATE dynemit_core dynemit_my_feature m)
-add_test(NAME test_my_feature COMMAND test_my_feature)
-```
+The `dynemit_add_feature_test` / `dynemit_add_feature_bench` calls in step 4
+register these targets. Do **not** add them to top-level `tests/CMakeLists.txt`
+(that directory is for core-only tests).
 
-### 9. Build and Test
+### 8. Build and Test
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
@@ -361,14 +269,29 @@ cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure
 ```
 
-Verify your library was built:
+Run the max suite or binary directly:
+
 ```bash
-find . -name "libdynemit_my_feature.a"
+ctest --test-dir build -R test_max --output-on-failure
+./build/features/max/test_max
+```
+
+Verify the library:
+
+```bash
+find build -name "libdynemit_max.a"
 ```
 
 ## Common SIMD Intrinsics
 
-### Arithmetic Operations
+### Integer max (u16-oriented, as in `max_u16`)
+
+| Operation | SSE4.2 | AVX2 | AVX-512F |
+|-----------|--------|------|----------|
+| Max epu16 | `_mm_max_epu16` | `_mm256_max_epu16` | `_mm512_max_epu16` |
+| Load | `_mm_loadu_si128` | `_mm256_loadu_si256` | `_mm512_loadu_si512` |
+
+### Float arithmetic (other features)
 
 | Operation | SSE/SSE4.2 | AVX/AVX2 | AVX-512F |
 |-----------|------------|----------|----------|
@@ -399,25 +322,27 @@ find . -name "libdynemit_my_feature.a"
 
 ## Best Practices
 
-1. **Always provide a scalar fallback** - Mark it with `__attribute__((target("default")))`
+1. **Always provide a scalar fallback.** Mark it with `DYNEMIT_TARGET_DEFAULT` / `__attribute__((target("default")))`.
 
-2. **Handle tail elements** - Process remaining elements that don't fit in SIMD registers
+2. **Handle tail elements.** Process remaining elements that don't fit in SIMD registers (see `max_u16_sse42` / `max_u16_avx2`).
 
-3. **Use unaligned loads/stores** - Unless you can guarantee alignment, use `_loadu_ps` and `_storeu_ps`
+3. **Use unaligned loads/stores** unless you can guarantee alignment.
 
-4. **Test correctness** - Verify your SIMD implementation matches scalar behavior
+4. **Test correctness** via `_select` across all SIMD levels and awkward sizes (including tails).
 
-5. **Disable auto-vectorization for scalar** - Use the `DYNEMIT_NO_AUTOVECTORIZE` macro and `DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN` from `<dynemit/compiler.h>` on scalar versions (works on both GCC and Clang)
+5. **Disable auto-vectorization for scalar.** Use `DYNEMIT_NO_AUTOVECTORIZE` and `DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN` from `<dynemit/compiler.h>`.
 
-6. **Use appropriate SIMD levels** - AVX2 may not provide benefits over AVX for all operations
+6. **Use appropriate SIMD levels.** Lower levels may delegate (e.g. `max_u16_sse2` calls scalar; `max_u16_avx` reuses SSE4.2).
 
-7. **Include necessary headers** - `<immintrin.h>` provides all x86 intrinsics
+7. **Include necessary headers.** `<immintrin.h>` on x86; `<arm_neon.h>` / `<arm_sve.h>` on aarch64.
 
-8. **Follow naming conventions**:
-   - Feature name: `my_feature`
-   - Function: `my_feature_f32` (or `_f64` for double precision)
-   - Static implementations: `my_feature_f32_sse2`, `my_feature_f32_avx`, etc.
-   - Resolver: `my_feature_f32_resolver`
+8. **Follow naming conventions** (from `max` / `max_u16`):
+   - Feature directory / CMake: `max`, `max_obj`, `dynemit_max`
+   - Function: `max_u16` (also `max_f64`, `max_u32`, …)
+   - Select API: `max_u16_select`
+   - Static implementations: `max_u16_scalar`, `max_u16_sse42`, `max_u16_avx2`, …
+   - Resolver: `max_u16_resolver`
+   - Test / bench: `tests/test_max.c`, `benchmarks/bench_max_<type>.c`
 
 ## Troubleshooting
 
@@ -442,7 +367,7 @@ Run the verification script to check SIMD instructions:
 
 Verify feature is registered:
 ```bash
-./tests/test_features
+./build/tests/test_features
 ```
 
 ## Further Reading

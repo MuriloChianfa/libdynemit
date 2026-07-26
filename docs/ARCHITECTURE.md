@@ -13,48 +13,64 @@ This is achieved through CMake's **object library** pattern, which allows compil
 ## Directory Structure
 
 ```
-dynemit/
-├── src/                     # Core library (CPU detection)
-│   ├── dynemit.c           # CPU feature detection
-│   └── dynemit_features.c  # Feature list (all-in-one only)
-├── features/                # Individual SIMD features
-│   ├── vector_add/
-│   ├── vector_mul/
-│   └── vector_sub/
-├── include/dynemit/         # Public headers
-└── tests/                   # Test suite
+libdynemit/
+├── src/                       # Core library (CPU detection)
+│   ├── dynemit.c             # CPU / SIMD level detection
+│   └── dynemit_features.c    # Feature name list (all-in-one only)
+├── features/                  # One directory per SIMD feature (auto-discovered)
+│   ├── max/
+│   │   ├── max_u16.c         # Implementations + _select() + ifunc
+│   │   ├── max_f64.c         # other type variants in the same feature
+│   │   ├── CMakeLists.txt    # object lib + dynemit_max + test/bench helpers
+│   │   ├── tests/            # Unity correctness tests
+│   │   └── benchmarks/       # bench_max_f64, bench_max_u32, …
+│   ├── sum/
+│   ├── mean/
+│   └── …                     # add, entropy, hll, radixs, …
+├── cmake/
+│   ├── FeatureExtras.cmake   # dynemit_add_feature_test / _bench helpers
+│   └── ListFeatures.cmake    # LIST_FEATURES=ON listing
+├── include/dynemit/           # Public headers
+├── bench/                     # Shared benchmark utilities (bench_utils.h)
+└── tests/                     # Core-only tests (detection, C++ compat, …)
 ```
 
 ## Build System Architecture
+
+### Feature discovery
+
+The root `CMakeLists.txt` Globs `features/*/` and `add_subdirectory`s each one.
+Each feature contributes `${FEATURE_NAME}_obj` objects into the all-in-one
+libraries; no hand-maintained feature list is required in the root CMake file
+for linking.
 
 ### Object Libraries
 
 Each feature is built as an **object library** (`*_obj` target):
 
 ```cmake
-add_library(vector_add_obj OBJECT vector_add.c)
+add_library(max_obj OBJECT ${MAX_SOURCES})
 ```
 
-Object libraries compile source files but don't create an archive. The compiled objects can then be:
-1. Bundled into the all-in-one library
-2. Packaged into individual static libraries
+Object libraries compile source files but don't create an archive. The compiled
+objects can then be:
+1. Bundled into the all-in-one static/shared libraries
+2. Packaged into individual static libraries (`libdynemit_max.a`, …)
 
-### All-in-One Library
+### All-in-One Libraries
 
-The `libdynemit.a` library combines all object libraries:
+`libdynemit.a` / `libdynemit.so` combine core + every discovered feature object:
 
 ```cmake
-add_library(dynemit STATIC
+add_library(dynemit_static STATIC
     $<TARGET_OBJECTS:dynemit_core_obj>
-    $<TARGET_OBJECTS:vector_add_obj>
-    $<TARGET_OBJECTS:vector_mul_obj>
-    $<TARGET_OBJECTS:vector_sub_obj>
+    ${FEATURE_OBJECTS}          # collected from features/*/
     src/dynemit_features.c
 )
 ```
 
 Benefits:
-- Single library to link against
+- Single library to link against (`-ldynemit`)
 - All features included
 - Runtime feature discovery via `dynemit_features()`
 
@@ -63,9 +79,7 @@ Benefits:
 Each feature also creates its own static library:
 
 ```cmake
-add_library(dynemit_vector_add STATIC 
-    $<TARGET_OBJECTS:vector_add_obj>
-)
+add_library(dynemit_max STATIC $<TARGET_OBJECTS:max_obj>)
 ```
 
 Benefits:
@@ -78,12 +92,25 @@ Benefits:
 The core library (`libdynemit_core.a`) contains only CPU detection:
 
 ```cmake
-add_library(dynemit_core STATIC 
-    $<TARGET_OBJECTS:dynemit_core_obj>
-)
+add_library(dynemit_core STATIC $<TARGET_OBJECTS:dynemit_core_obj>)
 ```
 
 This is required by all feature libraries and applications.
+
+### Tests and benchmarks
+
+Feature tests and benchmarks are registered through helpers in
+`cmake/FeatureExtras.cmake` (`dynemit_add_feature_test`,
+`dynemit_add_feature_bench`). Those helpers no-op unless the matching option is
+on:
+
+| Option | Debug default | Release default |
+|---|---|---|
+| `DYNEMIT_BUILD_TESTS` | ON | OFF |
+| `DYNEMIT_BUILD_BENCHMARKS` | ON | OFF |
+
+Core tests under `tests/` are also gated by `DYNEMIT_BUILD_TESTS`. Release
+builds therefore produce libraries only unless you pass `-D…=ON` explicitly.
 
 ## Runtime Dispatch Mechanism
 
@@ -92,29 +119,25 @@ This is required by all feature libraries and applications.
 Each feature uses the `ifunc` (indirect function) attribute, supported by both GCC and Clang on Linux/ELF targets:
 
 ```c
-// Resolver runs once at program load
-static vector_add_f32_func_t
-vector_add_f32_resolver(void)
+// Resolver runs once at program load (see features/max/max_u16.c)
+EXPLICIT_RUNTIME_RESOLVER(max_u16_resolver, max_u16_fn_t)
 {
-    simd_level_t level = detect_simd_level();
-    
-    switch (level) {
-    case SIMD_AVX512F: return vector_add_f32_avx512f;
-    case SIMD_AVX2:    return vector_add_f32_avx2;
-    // ... etc
-    }
+    return max_u16_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(max_u16_fn_t, max_u16, max_u16_resolver)
 
-// Public function uses ifunc for dispatch
-void vector_add_f32(const float *a, const float *b, float *out, size_t n)
-    __attribute__((ifunc("vector_add_f32_resolver")));
+double max_u16(const uint16_t *data, size_t n)
+    DYNEMIT_IFUNC_ATTR("max_u16_resolver");
 ```
 
 **How it works:**
-1. At program load time, the dynamic linker calls `vector_add_f32_resolver()`
-2. Resolver detects CPU features and returns optimal implementation pointer
-3. All subsequent calls to `vector_add_f32()` go directly to the selected implementation
+1. At program load time, the dynamic linker calls `max_u16_resolver()`
+2. Resolver detects CPU features (via `_select`) and returns optimal implementation pointer
+3. All subsequent calls to `max_u16()` go directly to the selected implementation
 4. **Zero runtime overhead** after initial resolution
+
+Tests and benchmarks call `max_u16_select(level)` directly to exercise every
+reachable SIMD variant without relying on host CPU detection alone.
 
 ### CPU Detection
 
@@ -173,39 +196,39 @@ dynemit_features(void)
 {
     static const char *features[] = {
         "core",
-        "vector_add",
-        "vector_mul",
-        "vector_sub",
-        NULL
+        /* … all shipped features … */
+        nullptr
     };
     return features;
 }
 ```
 
 When linking:
-- `libdynemit.a`: Uses the all-in-one version (includes dynemit_features.c)
-- `libdynemit_core.a`: Uses the weak default version
+- `libdynemit.a` / `libdynemit.so`: Uses the all-in-one version (includes `dynemit_features.c`) and defines `DYNEMIT_ALL_FEATURES`
+- `libdynemit_core.a`: Uses the weak default version (`"core"` only)
 
 ## Header Organization
 
 ### Umbrella Header
 
-`include/dynemit.h` conditionally includes feature headers:
+`include/dynemit.h` includes core plus every public feature header:
 
 ```c
 #include <dynemit/core.h>
-
-#ifdef DYNEMIT_ALL_FEATURES
-#include <dynemit/vector_add.h>
-#include <dynemit/vector_mul.h>
-#include <dynemit/vector_sub.h>
-#endif
+#include <dynemit/err.h>
+#include <dynemit/max.h>
+/* … add, stats, entropy, hll, radixs, … */
 ```
 
-The all-in-one library defines `DYNEMIT_ALL_FEATURES`:
+Consumers can also include a single feature header (e.g. `#include <dynemit/max.h>`)
+and link only `libdynemit_core` + `libdynemit_max`.
+
+The all-in-one targets define `DYNEMIT_ALL_FEATURES` so `dynemit_features()` is
+meaningful when linking `-ldynemit`:
 
 ```cmake
-target_compile_definitions(dynemit PUBLIC DYNEMIT_ALL_FEATURES)
+target_compile_definitions(dynemit_static PUBLIC DYNEMIT_ALL_FEATURES)
+target_compile_definitions(dynemit_shared PUBLIC DYNEMIT_ALL_FEATURES)
 ```
 
 ### Feature Headers
@@ -213,62 +236,64 @@ target_compile_definitions(dynemit PUBLIC DYNEMIT_ALL_FEATURES)
 Each feature has a minimal header in `include/dynemit/`:
 
 ```c
-#ifndef DYNEMIT_VECTOR_ADD_H
-#define DYNEMIT_VECTOR_ADD_H
+#ifndef DYNEMIT_MAX_H
+#define DYNEMIT_MAX_H
 
 #include <stddef.h>
+#include <stdint.h>
+#include <dynemit/core.h>
 
-void vector_add_f32(const float *a, const float *b, float *out, size_t n);
+typedef double (*max_u16_fn_t)(const uint16_t *, size_t);
+
+double max_u16(const uint16_t *data, size_t n);
+max_u16_fn_t max_u16_select(simd_level_t level);
 
 #endif
 ```
 
 **Design principles:**
-- Self-contained (only depends on standard headers and core.h)
+- Self-contained (only depends on standard headers and `core.h`)
 - No implementation details leaked
 - Can be included independently
+- Exposes `_select()` for explicit SIMD-level testing and benchmarking
 
 ## SIMD Implementation Pattern
 
 ### Standard Structure
 
-Every SIMD feature follows this pattern:
+Every SIMD feature follows this pattern (illustrated with `max_u16`):
 
 ```c
-// 1. Include intrinsics
+// 1. Include intrinsics + public header
 #include <immintrin.h>
-#include <stddef.h>
-#include <dynemit/core.h>
 #include <dynemit/compiler.h>
+#include <dynemit/max.h>
 
 // 2. Scalar fallback
-__attribute__((target("default")))
+DYNEMIT_TARGET_DEFAULT
 DYNEMIT_NO_AUTOVECTORIZE
-static void feature_scalar(...)
+static double max_u16_scalar(const uint16_t *data, size_t n)
 {
 DYNEMIT_PRAGMA_NO_VECTORIZE_BEGIN
     /* ... */
 }
 
-// 3. SIMD implementations (SSE2, SSE4.2, AVX, AVX2, AVX-512F)
-__attribute__((target("sse2")))
-static void feature_sse2(...) { /* ... */ }
+// 3. SIMD implementations (SSE2, SSE4.2, AVX, AVX2, AVX-512F, …)
+__attribute__((target("sse4.2")))
+static double max_u16_sse42(const uint16_t *data, size_t n) { /* ... */ }
 
-// ... more SIMD levels ...
+// 4. Explicit select + ifunc resolver macros
+max_u16_fn_t max_u16_select(simd_level_t level) { /* switch on level */ }
 
-// 4. Resolver function
-typedef void (*feature_func_t)(...);
-
-static feature_func_t
-feature_resolver(void)
+EXPLICIT_RUNTIME_RESOLVER(max_u16_resolver, max_u16_fn_t)
 {
-    simd_level_t level = detect_simd_level();
-    switch (level) { /* ... */ }
+    return max_u16_select(detect_simd_level_ts());
 }
+DYNEMIT_IFUNC_SETUP(max_u16_fn_t, max_u16, max_u16_resolver)
 
-// 5. Public ifunc
-__attribute__((target("avx512f,avx2,avx,sse4.2,sse2")))
-void feature(...) __attribute__((ifunc("feature_resolver")));
+// 5. Public entry (ifunc)
+double max_u16(const uint16_t *data, size_t n)
+    DYNEMIT_IFUNC_ATTR("max_u16_resolver");
 ```
 
 ### Why This Pattern?
@@ -281,38 +306,35 @@ void feature(...) __attribute__((ifunc("feature_resolver")));
 
 ## Testing Strategy
 
-### Unit Tests
+### Feature unit tests
 
-Each feature should have a correctness test:
+Each feature owns Unity tests under `features/<name>/tests/`, registered with
+`dynemit_add_feature_test(<name>)`. Typical coverage:
 
-```c
-// Verify SIMD result matches expected scalar computation
-for (int i = 0; i < N; i++) {
-    if (fabsf(result[i] - expected[i]) > epsilon) {
-        return FAIL;
-    }
-}
-```
+- Correctness vs scalar / expected values across input sizes
+- All reachable SIMD levels via `_select()`
+- Allocator failure paths where relevant (`FAULT_ALLOC`)
 
-### Feature Discovery Test
+### Core tests
 
-`tests/test_features.c` verifies:
-- Runtime feature enumeration works
-- All expected features are present
-- SIMD level detection succeeds
+`tests/` covers library-wide behavior (gated by `DYNEMIT_BUILD_TESTS`):
 
-### Integration Tests
+- `test_features.c`: runtime feature enumeration / `DYNEMIT_ALL_FEATURES`
+- SIMD detection, resolver macros, memory helpers
+- Optional Google Test C++ compatibility tests
 
-Benchmarks serve as integration tests:
-- Verify end-to-end functionality
-- Measure performance
-- Detect regressions
+### Benchmarks
+
+Feature benchmarks under `features/<name>/benchmarks/` (e.g. `bench_max_f64`,
+`bench_max_u32`) share CLI/CSV infrastructure from `bench/bench_utils.h` and are
+registered with `dynemit_add_feature_bench(<name> <type>)`. They double as
+integration smoke tests when built (`DYNEMIT_BUILD_BENCHMARKS`).
 
 ## Performance Considerations
 
 ### Cache Efficiency
 
-- Use unaligned loads (`_mm_loadu_ps`) to avoid alignment overhead
+- Use unaligned loads (e.g. `_mm_loadu_si128` in `max_u16_sse42`) to avoid alignment overhead
 - Process data sequentially to maximize cache hits
 - Consider prefetching for large datasets
 
@@ -320,16 +342,11 @@ Benchmarks serve as integration tests:
 
 ```c
 size_t i = 0;
-const size_t step = 16;  // SIMD width
+__m128i vmax = _mm_setzero_si128();
 
-// Main SIMD loop
-for (; i + step <= n; i += step) {
-    // SIMD operations
-}
-
-// Scalar tail for remaining elements
-for (; i < n; i++) {
-    // Scalar operation
+// Main SIMD loop (8 x u16 per SSE iteration)
+for (; i + 8 <= n; i += 8) {
+    vmax = _mm_max_epu16(vmax, _mm_loadu_si128((const __m128i *)(data + i)));
 }
 ```
 

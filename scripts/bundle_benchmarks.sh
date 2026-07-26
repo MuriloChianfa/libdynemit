@@ -257,7 +257,7 @@ fi
 
 echo ""
 echo -e "${BOLD}${BLUE}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${BLUE}║    libdynemit — Portable Benchmark Runner        ║${NC}"
+echo -e "${BOLD}${BLUE}║    libdynemit : Portable Benchmark Runner        ║${NC}"
 echo -e "${BOLD}${BLUE}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  CPU:          ${GREEN}${CPU_NAME}${NC}"

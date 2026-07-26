@@ -137,7 +137,7 @@ CPU_MODEL=$(get_cpu_model)
 # --- Header ---
 echo ""
 echo -e "${BOLD}${BLUE}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${BLUE}║    libdynemit — Full Benchmark Suite             ║${NC}"
+echo -e "${BOLD}${BLUE}║    libdynemit : Full Benchmark Suite             ║${NC}"
 echo -e "${BOLD}${BLUE}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  CPU:          ${GREEN}$(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2 | sed 's/^ *//')${NC}"
@@ -306,10 +306,10 @@ type_to_ctype() {
 # --- Generate charts ---
 #
 # Chart layout:
-#   bench/cpus/{arch}/{cpu}/features/{variant}/timing.png       — SIMD comparison (time)
-#   bench/cpus/{arch}/{cpu}/features/{variant}/throughput.png    — SIMD comparison (GFLOP/s)
-#   bench/features/{variant}/timing.png                         — CPU comparison (time)
-#   bench/features/{variant}/throughput.png                     — CPU comparison (GFLOP/s)
+#   bench/cpus/{arch}/{cpu}/features/{variant}/timing.png       : SIMD comparison (time)
+#   bench/cpus/{arch}/{cpu}/features/{variant}/throughput.png    : SIMD comparison (GFLOP/s)
+#   bench/features/{variant}/timing.png                          : CPU comparison (time)
+#   bench/features/{variant}/throughput.png                      : CPU comparison (GFLOP/s)
 #
 echo -e "${CYAN}--- Generating charts ---${NC}"
 echo ""
@@ -351,7 +351,7 @@ for variant in "${ALL_VARIANTS[@]}"; do
     unset SEEN_CPUS
 
     if [[ ${#CPU_LIST[@]} -eq 0 ]]; then
-        echo -e "  ${YELLOW}skip${NC} ${variant} — no CSV data"
+        echo -e "  ${YELLOW}skip${NC} ${variant} : no CSV data"
         continue
     fi
 
@@ -376,14 +376,14 @@ for variant in "${ALL_VARIANTS[@]}"; do
         if [[ ${#SIMD_ARGS[@]} -gt 0 ]]; then
             python3 scripts/plot_benchmark.py \
                 --input "${SIMD_ARGS[@]}" \
-                --title "${variant} — SIMD Comparison" \
+                --title "${variant} : SIMD Comparison" \
                 --xlabel "$xlabel" \
                 --metric time \
                 --output "${IMG_DIR}/timing.png" > /dev/null 2>&1
 
             python3 scripts/plot_benchmark.py \
                 --input "${SIMD_ARGS[@]}" \
-                --title "${variant} — SIMD Throughput" \
+                --title "${variant} : SIMD Throughput" \
                 --xlabel "$xlabel" \
                 --metric gflops \
                 --output "${IMG_DIR}/throughput.png" > /dev/null 2>&1
@@ -423,14 +423,14 @@ for variant in "${ALL_VARIANTS[@]}"; do
 
         python3 scripts/plot_benchmark.py \
             --input "${CPU_ARGS[@]}" \
-            --title "${variant} — CPU Comparison" \
+            --title "${variant} : CPU Comparison" \
             --xlabel "$xlabel" \
             --metric time \
             --output "${FEAT_IMG_DIR}/timing.png" > /dev/null 2>&1
 
         python3 scripts/plot_benchmark.py \
             --input "${CPU_ARGS[@]}" \
-            --title "${variant} — CPU Throughput Comparison" \
+            --title "${variant} : CPU Throughput Comparison" \
             --xlabel "$xlabel" \
             --metric gflops \
             --output "${FEAT_IMG_DIR}/throughput.png" > /dev/null 2>&1

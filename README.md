@@ -35,8 +35,8 @@ entropy_u32(data, n);
 
 <table>
 <tr>
-<td align="center"><b>x86_64</b> — AMD Ryzen 9 9950X3D</td>
-<td align="center"><b>aarch64</b> — ARM Neoverse V2</td>
+<td align="center"><b>x86_64</b> : AMD Ryzen 9 9950X3D</td>
+<td align="center"><b>aarch64</b> : ARM Neoverse V2</td>
 </tr>
 <tr>
 <td><img src="bench/cpus/x86_64/amd_ryzen_9_9950x3d/features/max_u32/timing.png" alt="max_u32 SIMD timings on x86_64" width="100%"></td>

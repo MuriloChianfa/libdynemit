@@ -88,7 +88,7 @@ REMOTE_DIR="/tmp/${BUNDLE}"
 
 echo ""
 echo -e "${BOLD}${BLUE}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${BLUE}║    libdynemit — Remote ARM Benchmark Runner      ║${NC}"
+echo -e "${BOLD}${BLUE}║    libdynemit : Remote ARM Benchmark Runner      ║${NC}"
 echo -e "${BOLD}${BLUE}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  Remote:       ${GREEN}${SSH_USER}@${SSH_HOST}${NC}"
@@ -121,7 +121,7 @@ if [[ "$REMOTE_ARCH" != "aarch64" ]]; then
     echo -e "${RED}Error: Remote is ${REMOTE_ARCH}, expected aarch64.${NC}"
     exit 1
 fi
-echo -e "  ${GREEN}Connected${NC} — ${REMOTE_ARCH}"
+echo -e "  ${GREEN}Connected${NC} : ${REMOTE_ARCH}"
 echo ""
 
 echo -e "${CYAN}[3/5] Uploading bundle to remote...${NC}"
