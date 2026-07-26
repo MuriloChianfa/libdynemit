@@ -222,6 +222,10 @@ install(TARGETS dynemit_my_feature
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/my_feature.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit
 )
+
+# Tests / benchmarks (gated by DYNEMIT_BUILD_TESTS / DYNEMIT_BUILD_BENCHMARKS)
+dynemit_add_feature_test(my_feature)
+dynemit_add_feature_bench(my_feature f32)
 ```
 
 ### 5. Update Main CMakeLists.txt
@@ -352,10 +356,9 @@ add_test(NAME test_my_feature COMMAND test_my_feature)
 ### 9. Build and Test
 
 ```bash
-cd build
-cmake ..
-make
-ctest
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
 ```
 
 Verify your library was built:

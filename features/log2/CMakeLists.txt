@@ -16,16 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_log2 ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/log2.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_log2 tests/test_log2.c)
-target_include_directories(test_log2 PRIVATE
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/src
-)
-target_link_libraries(test_log2 PRIVATE dynemit_log2 dynemit_core unity m)
-add_test(NAME test_log2 COMMAND test_log2)
-
-# Benchmarks
-add_executable(bench_log2_f64 benchmarks/bench_log2_f64.c)
-target_include_directories(bench_log2_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_log2_f64 PRIVATE dynemit_log2 dynemit_core m)
+dynemit_add_feature_test(log2 INCLUDES ${PROJECT_SOURCE_DIR}/src)
+dynemit_add_feature_bench(log2 f64)

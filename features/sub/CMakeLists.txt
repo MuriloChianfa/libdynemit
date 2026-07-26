@@ -16,13 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_sub ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/sub.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_sub tests/test_sub.c)
-target_include_directories(test_sub PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_sub PRIVATE dynemit_sub dynemit_core unity m)
-add_test(NAME test_sub COMMAND test_sub)
-
-# Benchmarks
-add_executable(bench_sub_f32 benchmarks/bench_sub_f32.c)
-target_include_directories(bench_sub_f32 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_sub_f32 PRIVATE dynemit_sub dynemit_core m)
+dynemit_add_feature_test(sub)
+dynemit_add_feature_bench(sub f32)

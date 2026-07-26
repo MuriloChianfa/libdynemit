@@ -25,6 +25,7 @@ All C tests use the [Unity](https://github.com/ThrowTheSwitch/Unity) framework
 like `TEST_ASSERT_DOUBLE_WITHIN`, `TEST_ASSERT_EQUAL_UINT64`, etc., with clear
 per-test-function failure reporting.
 
+Tests are enabled by default for Debug. For Release, pass `-DDYNEMIT_BUILD_TESTS=ON`.
 Run the full test suite (core + all features):
 
 ```bash
@@ -191,8 +192,16 @@ CI installs Mull the same way (see `.github/workflows/mutation.yml`).
 ## Build Types
 
 ```bash
+# Debug: tests and benchmarks on by default
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
+
+# Release: library only by default
 cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+# Release with tests/benchmarks
+cmake -B build -DCMAKE_BUILD_TYPE=Release \
+  -DDYNEMIT_BUILD_TESTS=ON \
+  -DDYNEMIT_BUILD_BENCHMARKS=ON
 ```
 
 ## List Available Features

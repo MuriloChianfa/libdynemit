@@ -16,13 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_mean ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/mean.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_mean tests/test_mean.c)
-target_include_directories(test_mean PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_mean PRIVATE dynemit_mean dynemit_core unity m)
-add_test(NAME test_mean COMMAND test_mean)
-
-# Benchmarks
-add_executable(bench_mean_f64 benchmarks/bench_mean_f64.c)
-target_include_directories(bench_mean_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_mean_f64 PRIVATE dynemit_mean dynemit_core m)
+dynemit_add_feature_test(mean)
+dynemit_add_feature_bench(mean f64)

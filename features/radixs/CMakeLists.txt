@@ -17,20 +17,7 @@ install(TARGETS dynemit_radixs ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/radixs.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_radixs tests/test_radixs.c ${PROJECT_SOURCE_DIR}/tests/fault_alloc.c)
-target_include_directories(test_radixs PRIVATE
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/tests)
-target_link_libraries(test_radixs PRIVATE dynemit_radixs dynemit_core unity m)
-target_link_options(test_radixs PRIVATE
-    -Wl,--wrap=aligned_alloc -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc)
-add_test(NAME test_radixs COMMAND test_radixs)
-
-# Benchmarks
+dynemit_add_feature_test(radixs FAULT_ALLOC)
 foreach(t u16 u32 u64)
-  add_executable(bench_radixs_${t} benchmarks/bench_radixs_${t}.c)
-  target_include_directories(bench_radixs_${t} PRIVATE
-      ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-  target_link_libraries(bench_radixs_${t} PRIVATE dynemit_radixs dynemit_core m)
+    dynemit_add_feature_bench(radixs ${t})
 endforeach()

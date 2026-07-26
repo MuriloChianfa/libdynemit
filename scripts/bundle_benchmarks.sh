@@ -87,6 +87,7 @@ echo ""
 echo -e "${CYAN}[1/4] Configuring static build...${NC}"
 cmake -B "$BUILD_DIR" \
     -DCMAKE_BUILD_TYPE=Release \
+    -DDYNEMIT_BUILD_BENCHMARKS=ON \
     -DDYNEMIT_STATIC_BENCHMARKS=ON \
     "${CMAKE_EXTRA_ARGS[@]}" \
     -Wno-dev > /dev/null 2>&1

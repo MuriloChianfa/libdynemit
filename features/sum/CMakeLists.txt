@@ -16,13 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_sum ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/sum.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_sum tests/test_sum.c)
-target_include_directories(test_sum PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_sum PRIVATE dynemit_sum dynemit_core unity m)
-add_test(NAME test_sum COMMAND test_sum)
-
-# Benchmarks
-add_executable(bench_sum_f64 benchmarks/bench_sum_f64.c)
-target_include_directories(bench_sum_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_sum_f64 PRIVATE dynemit_sum dynemit_core m)
+dynemit_add_feature_test(sum)
+dynemit_add_feature_bench(sum f64)

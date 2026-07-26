@@ -39,7 +39,7 @@ jobs:
         gcc -dumpversion
     
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DCMAKE_C_FLAGS="-Wall -Wextra -Wconversion -Werror"
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DDYNEMIT_BUILD_TESTS=ON
     
     - name: Build
       run: cmake --build build --config ${{ matrix.build-type }} -j$(nproc)
@@ -71,7 +71,7 @@ jobs:
         ldd --version || true
 
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-Wall -Wextra -Wconversion -Werror"
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DDYNEMIT_BUILD_TESTS=ON
 
     - name: Build
       run: cmake --build build -j$(nproc)
@@ -113,7 +113,7 @@ jobs:
         gcc -dumpversion
     
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DCMAKE_C_FLAGS="-Wall -Wextra -Wconversion -Werror"
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DDYNEMIT_BUILD_TESTS=ON
     
     - name: Build
       run: cmake --build build --config ${{ matrix.build-type }} -j$(nproc)
@@ -165,9 +165,9 @@ jobs:
       run: |
         cmake -B build \
           -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
+          -DDYNEMIT_BUILD_TESTS=ON \
           -DCMAKE_C_COMPILER=clang-${{ matrix.clang-version }} \
-          -DCMAKE_CXX_COMPILER=clang++-${{ matrix.clang-version }} \
-          -DCMAKE_C_FLAGS="-Wall -Wextra -Wconversion -Werror"
+          -DCMAKE_CXX_COMPILER=clang++-${{ matrix.clang-version }}
 
     - name: Build
       run: cmake --build build --config ${{ matrix.build-type }} -j$(nproc)
@@ -219,9 +219,9 @@ jobs:
       run: |
         cmake -B build \
           -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
+          -DDYNEMIT_BUILD_TESTS=ON \
           -DCMAKE_C_COMPILER=clang-${{ matrix.clang-version }} \
-          -DCMAKE_CXX_COMPILER=clang++-${{ matrix.clang-version }} \
-          -DCMAKE_C_FLAGS="-Wall -Wextra -Wconversion -Werror"
+          -DCMAKE_CXX_COMPILER=clang++-${{ matrix.clang-version }}
 
     - name: Build
       run: cmake --build build --config ${{ matrix.build-type }} -j$(nproc)
@@ -329,7 +329,7 @@ jobs:
     
     - name: Build Release
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13 -DCMAKE_C_FLAGS="-Wall -Wextra -Wconversion -Werror"
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13
         cmake --build build -j$(nproc)
     
     - name: Check for SIMD instructions
@@ -374,7 +374,7 @@ jobs:
 
     - name: Build Release
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13 -DCMAKE_C_FLAGS="-Wall -Wextra -Wconversion -Werror"
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13
         cmake --build build -j$(nproc)
 
     - name: Check for SIMD instructions
@@ -458,7 +458,7 @@ jobs:
     
     - name: Build Release
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13 -DCMAKE_C_FLAGS="-Wall -Wextra -Wconversion -Werror"
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13
         cmake --build build -j$(nproc)
     
     - name: Package libraries
@@ -496,7 +496,7 @@ jobs:
 
     - name: Build Release
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13 -DCMAKE_C_FLAGS="-Wall -Wextra -Wconversion -Werror"
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13
         cmake --build build -j$(nproc)
 
     - name: Package libraries

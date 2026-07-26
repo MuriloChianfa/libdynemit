@@ -26,37 +26,15 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_entropy ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/entropy.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_entropy tests/test_entropy.c ${PROJECT_SOURCE_DIR}/tests/fault_alloc.c)
-target_include_directories(test_entropy PRIVATE
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/tests)
-target_link_libraries(test_entropy PRIVATE dynemit_entropy dynemit_core unity m pthread)
-target_link_options(test_entropy PRIVATE
-    -Wl,--wrap=aligned_alloc -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc)
-add_test(NAME test_entropy COMMAND test_entropy)
-
+dynemit_add_feature_test(entropy FAULT_ALLOC PTHREAD)
 if(DYNEMIT_TS)
-    add_executable(test_entropy_ts ${PROJECT_SOURCE_DIR}/tests/test_entropy_ts.c
-        ${PROJECT_SOURCE_DIR}/tests/fault_alloc.c)
-    target_include_directories(test_entropy_ts PRIVATE
-        ${PROJECT_SOURCE_DIR}/include
-        ${PROJECT_SOURCE_DIR}/tests)
-    target_link_libraries(test_entropy_ts PRIVATE dynemit_entropy dynemit_core unity m pthread)
-    target_link_options(test_entropy_ts PRIVATE
-        -Wl,--wrap=aligned_alloc -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc)
-    add_test(NAME test_entropy_ts COMMAND test_entropy_ts)
+    dynemit_add_feature_test(entropy
+        NAME test_entropy_ts
+        SOURCES ${PROJECT_SOURCE_DIR}/tests/test_entropy_ts.c
+        FAULT_ALLOC
+        PTHREAD
+    )
 endif()
-
-# Benchmarks
-add_executable(bench_entropy_u16 benchmarks/bench_entropy_u16.c)
-target_include_directories(bench_entropy_u16 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_entropy_u16 PRIVATE dynemit_entropy dynemit_core m)
-
-add_executable(bench_entropy_u32 benchmarks/bench_entropy_u32.c)
-target_include_directories(bench_entropy_u32 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_entropy_u32 PRIVATE dynemit_entropy dynemit_core m)
-
-add_executable(bench_entropy_histogram benchmarks/bench_entropy_histogram.c)
-target_include_directories(bench_entropy_histogram PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_entropy_histogram PRIVATE dynemit_entropy dynemit_core m)
+dynemit_add_feature_bench(entropy u16)
+dynemit_add_feature_bench(entropy u32)
+dynemit_add_feature_bench(entropy histogram)

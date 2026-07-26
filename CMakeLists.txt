@@ -31,6 +31,18 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
+# Tests/benchmarks: ON for Debug, OFF for Release
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(_dynemit_tests_default ON)
+    set(_dynemit_bench_default ON)
+else()
+    set(_dynemit_tests_default OFF)
+    set(_dynemit_bench_default OFF)
+endif()
+
+option(DYNEMIT_BUILD_TESTS "Build tests (core + features)" ${_dynemit_tests_default})
+option(DYNEMIT_BUILD_BENCHMARKS "Build feature benchmarks" ${_dynemit_bench_default})
+
 # Compiler flags
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wconversion -Werror")
 set(CMAKE_C_FLAGS_DEBUG "-g -O0")
@@ -52,10 +64,13 @@ endif()
 include(Coverage)
 include(Mull)
 include(Sanitizers)
-include(Unity)
+
+if(DYNEMIT_BUILD_TESTS)
+    include(Unity)
+endif()
 
 option(DYNEMIT_ENABLE_GTEST "Build Google Test C++ compatibility tests" ON)
-if(DYNEMIT_ENABLE_GTEST)
+if(DYNEMIT_BUILD_TESTS AND DYNEMIT_ENABLE_GTEST)
     include(GTest)
 endif()
 
@@ -63,7 +78,11 @@ endif()
 add_subdirectory(src)
 
 # Enable testing before features (feature subdirectories define their own tests)
-enable_testing()
+if(DYNEMIT_BUILD_TESTS)
+    enable_testing()
+endif()
+
+include(FeatureExtras)
 
 # Automatically discover and add all feature subdirectories
 file(GLOB FEATURE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/features/*")
@@ -104,7 +123,6 @@ if(DYNEMIT_STATIC_BENCHMARKS)
     message(STATUS "Static benchmarks:  ON")
 endif()
 
-option(DYNEMIT_BUILD_TESTS "Build core library tests" ON)
 if(DYNEMIT_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
@@ -178,6 +196,8 @@ message(STATUS "Architecture:      ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "x86 SIMD Support:  ${X86_ARCH}")
 message(STATUS "ARM SIMD Support:  ${ARM_ARCH}")
 message(STATUS "Thread-safe (DYNEMIT_TS): ${DYNEMIT_TS}")
+message(STATUS "Build tests:       ${DYNEMIT_BUILD_TESTS}")
+message(STATUS "Build benchmarks:  ${DYNEMIT_BUILD_BENCHMARKS}")
 message(STATUS "musl libc:         ${DYNEMIT_MUSL_LIBC}")
 message(STATUS "Install prefix:    ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "============================================")

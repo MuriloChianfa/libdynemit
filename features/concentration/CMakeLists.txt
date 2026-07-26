@@ -16,13 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_concentration ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/concentration.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_concentration tests/test_concentration.c)
-target_include_directories(test_concentration PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_concentration PRIVATE dynemit_concentration dynemit_topk dynemit_hill dynemit_hhi dynemit_core unity m)
-add_test(NAME test_concentration COMMAND test_concentration)
-
-# Benchmarks
-add_executable(bench_concentration_f64 benchmarks/bench_concentration_f64.c)
-target_include_directories(bench_concentration_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_concentration_f64 PRIVATE dynemit_concentration dynemit_topk dynemit_hill dynemit_hhi dynemit_core m)
+dynemit_add_feature_test(concentration LIBS dynemit_topk dynemit_hill dynemit_hhi)
+dynemit_add_feature_bench(concentration f64 LIBS dynemit_topk dynemit_hill dynemit_hhi)

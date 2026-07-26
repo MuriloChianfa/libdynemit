@@ -30,23 +30,6 @@ install(TARGETS dynemit_hll ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/hll.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_hll tests/test_hll.c ${PROJECT_SOURCE_DIR}/tests/fault_alloc.c)
-target_include_directories(test_hll PRIVATE
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/tests)
-target_link_libraries(test_hll PRIVATE dynemit_hll dynemit_core unity m)
-target_link_options(test_hll PRIVATE
-    -Wl,--wrap=aligned_alloc -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc)
-add_test(NAME test_hll COMMAND test_hll)
-
-# Benchmarks
-add_executable(bench_hll_u32 benchmarks/bench_hll_u32.c)
-target_include_directories(bench_hll_u32 PRIVATE
-    ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_hll_u32 PRIVATE dynemit_hll dynemit_core m)
-
-add_executable(bench_hll_u64 benchmarks/bench_hll_u64.c)
-target_include_directories(bench_hll_u64 PRIVATE
-    ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_hll_u64 PRIVATE dynemit_hll dynemit_core m)
+dynemit_add_feature_test(hll FAULT_ALLOC)
+dynemit_add_feature_bench(hll u32)
+dynemit_add_feature_bench(hll u64)

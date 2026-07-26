@@ -16,13 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_min ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/min.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_min tests/test_min.c)
-target_include_directories(test_min PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_min PRIVATE dynemit_min dynemit_core unity m)
-add_test(NAME test_min COMMAND test_min)
-
-# Benchmarks
-add_executable(bench_min_f64 benchmarks/bench_min_f64.c)
-target_include_directories(bench_min_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_min_f64 PRIVATE dynemit_min dynemit_core m)
+dynemit_add_feature_test(min)
+dynemit_add_feature_bench(min f64)

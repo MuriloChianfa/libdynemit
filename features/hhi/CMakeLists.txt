@@ -39,18 +39,5 @@ install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/hhi.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit
 )
 
-# Tests
-add_executable(test_hhi tests/test_hhi.c ${PROJECT_SOURCE_DIR}/tests/fault_alloc.c)
-target_include_directories(test_hhi PRIVATE
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/tests)
-target_link_libraries(test_hhi PRIVATE dynemit_hhi dynemit_core unity m)
-target_link_options(test_hhi PRIVATE
-    -Wl,--wrap=aligned_alloc -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc)
-add_test(NAME test_hhi COMMAND test_hhi)
-set_tests_properties(test_hhi PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-# Benchmarks
-add_executable(bench_hhi_u16 benchmarks/bench_hhi_u16.c)
-target_include_directories(bench_hhi_u16 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_hhi_u16 PRIVATE dynemit_hhi dynemit_core m)
+dynemit_add_feature_test(hhi FAULT_ALLOC WORKING_DIRECTORY_BUILD)
+dynemit_add_feature_bench(hhi u16)

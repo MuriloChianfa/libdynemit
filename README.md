@@ -651,11 +651,16 @@ libdynemit/
 <summary><b>Build Options</b></summary>
 
 ```bash
-# Release build (default, -O3 optimization)
+# Release build (default, full optimization)
 cmake -B build
 cmake --build build -j$(nproc)
 
-# Debug build
+# Release with tests and/or benchmarks
+cmake -B build -DCMAKE_BUILD_TYPE=Release \
+  -DDYNEMIT_BUILD_TESTS=ON \
+  -DDYNEMIT_BUILD_BENCHMARKS=ON
+
+# Debug build (tests and benchmarks on by default)
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 
 # List available features at configure time
@@ -667,7 +672,7 @@ cmake -B build -DLIST_FEATURES=ON
 <details>
 <summary><b>Running Tests</b></summary>
 
-All C tests use the [Unity](https://github.com/ThrowTheSwitch/Unity) framework; C++ tests use [Google Test](https://github.com/google/googletest). Both are fetched automatically via CMake FetchContent.
+All C tests use the [Unity](https://github.com/ThrowTheSwitch/Unity) framework; C++ tests use [Google Test](https://github.com/google/googletest). Both are fetched automatically via CMake FetchContent when tests are enabled.
 
 ```bash
 # Run the full test suite (core + all features)

@@ -9,8 +9,7 @@ any of them.
 ## Quick Start
 
 ```bash
-# Build
-cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DDYNEMIT_BUILD_BENCHMARKS=ON
 cmake --build build -j$(nproc)
 
 # Run all variants, all SIMD levels, pinned to a single core
@@ -243,7 +242,9 @@ without any configuration changes.
 Benchmarks can be statically linked via the CMake option:
 
 ```bash
-cmake -B build-static -DCMAKE_BUILD_TYPE=Release -DDYNEMIT_STATIC_BENCHMARKS=ON
+cmake -B build-static -DCMAKE_BUILD_TYPE=Release \
+  -DDYNEMIT_BUILD_BENCHMARKS=ON \
+  -DDYNEMIT_STATIC_BENCHMARKS=ON
 cmake --build build-static -j$(nproc)
 ```
 

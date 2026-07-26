@@ -156,7 +156,7 @@ else
     # --- Build ---
     if [[ "$SKIP_BUILD" -eq 0 ]]; then
         echo -e "${CYAN}--- Building (Release) ---${NC}"
-        cmake -B build -DCMAKE_BUILD_TYPE=Release -Wno-dev > /dev/null 2>&1
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DDYNEMIT_BUILD_BENCHMARKS=ON -Wno-dev > /dev/null 2>&1
         cmake --build build -j"$(nproc)" > /dev/null 2>&1
         echo -e "  ${GREEN}Build complete${NC}"
         echo ""

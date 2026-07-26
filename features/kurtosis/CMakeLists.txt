@@ -16,13 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_kurtosis ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/kurtosis.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_kurtosis tests/test_kurtosis.c)
-target_include_directories(test_kurtosis PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_kurtosis PRIVATE dynemit_kurtosis dynemit_mean dynemit_core unity m)
-add_test(NAME test_kurtosis COMMAND test_kurtosis)
-
-# Benchmarks
-add_executable(bench_kurtosis_f64 benchmarks/bench_kurtosis_f64.c)
-target_include_directories(bench_kurtosis_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_kurtosis_f64 PRIVATE dynemit_kurtosis dynemit_mean dynemit_core m)
+dynemit_add_feature_test(kurtosis LIBS dynemit_mean)
+dynemit_add_feature_bench(kurtosis f64 LIBS dynemit_mean)

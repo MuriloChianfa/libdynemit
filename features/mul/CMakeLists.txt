@@ -16,13 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_mul ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/mul.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_mul tests/test_mul.c)
-target_include_directories(test_mul PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_mul PRIVATE dynemit_mul dynemit_core unity m)
-add_test(NAME test_mul COMMAND test_mul)
-
-# Benchmarks
-add_executable(bench_mul_f32 benchmarks/bench_mul_f32.c)
-target_include_directories(bench_mul_f32 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_mul_f32 PRIVATE dynemit_mul dynemit_core m)
+dynemit_add_feature_test(mul)
+dynemit_add_feature_bench(mul f32)

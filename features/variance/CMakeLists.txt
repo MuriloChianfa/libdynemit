@@ -16,13 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_variance ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/variance.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_variance tests/test_variance.c)
-target_include_directories(test_variance PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_variance PRIVATE dynemit_variance dynemit_mean dynemit_core unity m)
-add_test(NAME test_variance COMMAND test_variance)
-
-# Benchmarks
-add_executable(bench_variance_f64 benchmarks/bench_variance_f64.c)
-target_include_directories(bench_variance_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_variance_f64 PRIVATE dynemit_variance dynemit_mean dynemit_core m)
+dynemit_add_feature_test(variance LIBS dynemit_mean)
+dynemit_add_feature_bench(variance f64 LIBS dynemit_mean)

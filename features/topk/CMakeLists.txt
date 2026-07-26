@@ -16,13 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_topk ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/topk.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_topk tests/test_topk.c)
-target_include_directories(test_topk PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_topk PRIVATE dynemit_topk dynemit_core unity m)
-add_test(NAME test_topk COMMAND test_topk)
-
-# Benchmarks
-add_executable(bench_topk_f64 benchmarks/bench_topk_f64.c)
-target_include_directories(bench_topk_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_topk_f64 PRIVATE dynemit_topk dynemit_core m)
+dynemit_add_feature_test(topk)
+dynemit_add_feature_bench(topk f64)

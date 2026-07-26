@@ -16,13 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_skewness ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/skewness.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_skewness tests/test_skewness.c)
-target_include_directories(test_skewness PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_skewness PRIVATE dynemit_skewness dynemit_mean dynemit_core unity m)
-add_test(NAME test_skewness COMMAND test_skewness)
-
-# Benchmarks
-add_executable(bench_skewness_f64 benchmarks/bench_skewness_f64.c)
-target_include_directories(bench_skewness_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_skewness_f64 PRIVATE dynemit_skewness dynemit_mean dynemit_core m)
+dynemit_add_feature_test(skewness LIBS dynemit_mean)
+dynemit_add_feature_bench(skewness f64 LIBS dynemit_mean)

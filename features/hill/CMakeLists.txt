@@ -16,13 +16,5 @@ include(GNUInstallDirs)
 install(TARGETS dynemit_hill ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/include/dynemit/hill.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dynemit)
 
-# Tests
-add_executable(test_hill tests/test_hill.c)
-target_include_directories(test_hill PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(test_hill PRIVATE dynemit_hill dynemit_core unity m)
-add_test(NAME test_hill COMMAND test_hill)
-
-# Benchmarks
-add_executable(bench_hill_f64 benchmarks/bench_hill_f64.c)
-target_include_directories(bench_hill_f64 PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/bench)
-target_link_libraries(bench_hill_f64 PRIVATE dynemit_hill dynemit_core m)
+dynemit_add_feature_test(hill)
+dynemit_add_feature_bench(hill f64)
