@@ -189,6 +189,20 @@ to the scalar path produce trivial mutants that can be ignored in the report.
 
 CI installs Mull the same way (see `.github/workflows/mutation.yml`).
 
+## Formal proofs (CBMC)
+
+[CBMC](https://github.com/diffblue/cbmc) bounded proofs cover
+[`src/mem.h`](../src/mem.h) (`mem_align_up`, `mem_aligned_bytes`,
+`memsets`, `memcpys`).
+
+```bash
+sudo apt install cbmc
+./formal/run.sh
+```
+
+Bounds, properties, and documented overflow preconditions are in
+[formal/README.md](../formal/README.md).
+
 ## Build Types
 
 ```bash

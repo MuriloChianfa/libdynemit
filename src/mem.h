@@ -5,6 +5,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __CPROVER__
+#include <string.h>
+#define __builtin_memset memset
+#define __builtin_memcpy memcpy
+#endif
+
 #ifndef errno_t
 typedef int errno_t;
 #endif
@@ -50,10 +56,12 @@ mem_aligned_bytes(size_t count, size_t elem_size)
 static inline errno_t
 memsets(void *dest, size_t destsz, int value, size_t count)
 {
-    if (dest == NULL)
+    if (dest == NULL) {
         return count > 0 ? EINVAL : 0;
-    if (destsz > RSIZE_MAX || count > RSIZE_MAX)
+    }
+    if (destsz > RSIZE_MAX || count > RSIZE_MAX) {
         return EOVERFLOW;
+    }
     if (count > destsz) {
         __builtin_memset(dest, 0, destsz);
         return EOVERFLOW;
@@ -67,12 +75,14 @@ memcpys(void *restrict dest, size_t destsz,
         const void *restrict src, size_t count)
 {
     if (dest == NULL || src == NULL) {
-        if (dest != NULL && destsz > 0)
+        if (dest != NULL && destsz > 0) {
             __builtin_memset(dest, 0, destsz);
+        }
         return (dest == NULL || src == NULL) && count > 0 ? EINVAL : 0;
     }
-    if (destsz > RSIZE_MAX || count > RSIZE_MAX)
+    if (destsz > RSIZE_MAX || count > RSIZE_MAX) {
         return EOVERFLOW;
+    }
     if (count > destsz) {
         __builtin_memset(dest, 0, destsz);
         return EOVERFLOW;

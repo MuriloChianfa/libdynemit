@@ -69,3 +69,6 @@ compile_commands.json
 *.tar.gz
 reports/
 *.core
+
+# CBMC proof artifacts
+formal/out/

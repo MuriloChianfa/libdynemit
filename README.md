@@ -631,6 +631,7 @@ libdynemit/
 ├── tests/                      # Core-only tests (SIMD detection, C++ compat)
 │   ├── CMakeLists.txt
 │   ├── test_*
+├── formal/                     # C Bounded Model proofs
 ├── docs/
 │   ├── ADDING_FEATURES.md      # Guide for adding new features
 │   ├── ARCHITECTURE.md         # Internal architecture documentation
@@ -720,6 +721,19 @@ mull-runner-20 ./build-mull/features/sum/test_sum
 ```
 
 The `mull.yml` config at the project root controls which mutators are active.
+
+</details>
+
+<details>
+<summary><b>Formal Proofs</b></summary>
+
+[CBMC](https://github.com/diffblue/cbmc) bounded proofs. Requires CBMC 6.6+.
+
+```bash
+./formal/run.sh
+```
+
+See [formal/README.md](formal/README.md) and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#formal-proofs-cbmc).
 
 </details>
 

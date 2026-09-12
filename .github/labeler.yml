@@ -8,7 +8,7 @@ features:
 
 tests:
   - changed-files:
-      - any-glob-to-any-file: ['tests/**']
+      - any-glob-to-any-file: ['tests/**', 'formal/**']
 
 benchmarks:
   - changed-files:

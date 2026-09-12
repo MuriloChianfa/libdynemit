@@ -1,0 +1,41 @@
+name: Formal
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  cbmc:
+    name: CBMC
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Install CBMC
+      run: |
+        CBMC_VERSION=6.6.0
+        CBMC_DEB="ubuntu-24.04-cbmc-${CBMC_VERSION}-Linux.deb"
+        curl -fsSL -o "/tmp/${CBMC_DEB}" \
+          "https://github.com/diffblue/cbmc/releases/download/cbmc-${CBMC_VERSION}/${CBMC_DEB}"
+        sudo apt update
+        sudo apt install -y "/tmp/${CBMC_DEB}"
+        cbmc --version
+        cbmc --version | grep -F "${CBMC_VERSION}"
+
+    - name: Run proofs
+      run: ./formal/run.sh
+
+    - name: Upload CBMC logs
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: cbmc-logs
+        path: formal/out/
+        retention-days: 14
+        if-no-files-found: error
