@@ -2,8 +2,10 @@
 # Install Intel SDE (Software Development Emulator) for x86 AVX-512 coverage.
 # Fails loudly when the pinned release cannot be downloaded or unpacked.
 #
-# The download URL is resolved from Intel's official download page (mirror IDs
-# rotate). The tarball is verified against Intel's published SHA256 checksum.
+# Intel's product page now advertises the latest SDE (10.13.x). The 10.8.0
+# tarball stays at a versioned downloadmirror ID; a public redistribution of
+# the same file is used if Intel's page or CDN is unreachable. SHA256 is
+# pinned either way.
 #
 # Usage: ./scripts/install_intel_sde.sh [INSTALL_DIR]
 # Sets SDE_BIN in GITHUB_ENV when run in GitHub Actions, otherwise prints export hint.
@@ -15,57 +17,46 @@ INSTALL_DIR="${1:-/opt/intel-sde}"
 # Pinned release: AVX-512F + AVX-512-VBMI2 via sde64 -spr
 SDE_VERSION="10.8.0"
 SDE_TARBALL="sde-external-10.8.0-2026-03-15-lin.tar.xz"
-SDE_PAGE="https://www.intel.com/content/www/us/en/download/684897/intel-software-development-emulator.html"
-# SHA256 from https://www.intel.com/content/www/us/en/download/684897/...
+# SHA256 from https://www.intel.com/content/www/us/en/download/684897/915934/...
 SDE_SHA256="50B320CD226ACEF7A491F5B321FC1BE3C3C7984F9E27A456E64894B5B0979DD3"
+SDE_URLS=(
+    "https://downloadmirror.intel.com/915934/${SDE_TARBALL}"
+    "https://ci-mirrors.rust-lang.org/${SDE_TARBALL}"
+)
 
 if [[ "$(uname -m)" != "x86_64" ]]; then
     echo "Error: Intel SDE install is only supported on x86_64 hosts" >&2
     exit 2
 fi
 
-resolve_official_url() {
-    local page_url="$1"
-    local tarball="$2"
-    local url
-
-    url="$(curl -fsSL "$page_url" \
-        | grep -oE "https://downloadmirror\\.intel\\.com/[0-9]+/${tarball//./\\.}" \
-        | head -n1)"
-
-    if [[ -z "$url" ]]; then
-        url="$(curl -fsSL "$page_url" \
-            | grep -oP '(?<=data-href=")(https://downloadmirror\.intel\.com/[^"]+'"${tarball//./\\.}"')' \
-            | head -n1)"
-    fi
-
-    if [[ -z "$url" ]]; then
-        echo "Error: could not resolve official SDE URL from ${page_url}" >&2
-        return 1
-    fi
-
-    if [[ "$url" != https://downloadmirror.intel.com/* ]]; then
-        echo "Error: resolved URL is not an Intel download mirror: ${url}" >&2
-        return 1
-    fi
-
-    printf '%s\n' "$url"
-}
-
 TMPDIR="${TMPDIR:-/tmp}"
 ARCHIVE="${TMPDIR}/${SDE_TARBALL}"
 
-echo "Resolving Intel SDE ${SDE_VERSION} download URL..."
-SDE_URL="$(resolve_official_url "$SDE_PAGE" "$SDE_TARBALL")"
-echo "Downloading from ${SDE_URL}..."
-if ! curl -fsSL "$SDE_URL" -o "$ARCHIVE"; then
-    echo "Error: failed to download Intel SDE from ${SDE_URL}" >&2
-    exit 1
-fi
+download() {
+    curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors "$1" -o "$2"
+}
 
-ACTUAL_SHA256="$(sha256sum "$ARCHIVE" | awk '{print toupper($1)}')"
-if [[ "$ACTUAL_SHA256" != "$SDE_SHA256" ]]; then
-    echo "Error: SDE tarball SHA256 mismatch (expected ${SDE_SHA256}, got ${ACTUAL_SHA256})" >&2
+got=0
+for url in "${SDE_URLS[@]}"; do
+    echo "Downloading Intel SDE ${SDE_VERSION} from ${url}..."
+    if ! download "$url" "$ARCHIVE"; then
+        echo "Download failed from ${url}" >&2
+        continue
+    fi
+
+    ACTUAL_SHA256="$(sha256sum "$ARCHIVE" | awk '{print toupper($1)}')"
+    if [[ "$ACTUAL_SHA256" != "$SDE_SHA256" ]]; then
+        echo "Error: SDE tarball SHA256 mismatch from ${url} (expected ${SDE_SHA256}, got ${ACTUAL_SHA256})" >&2
+        rm -f "$ARCHIVE"
+        continue
+    fi
+
+    got=1
+    break
+done
+
+if [[ "${got}" -ne 1 ]]; then
+    echo "Error: could not download a SHA256-matching Intel SDE ${SDE_VERSION} tarball" >&2
     exit 1
 fi
 
